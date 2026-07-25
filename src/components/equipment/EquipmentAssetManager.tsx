@@ -6,6 +6,9 @@ import {
   QrCode, Calendar, Activity, FileText
 } from 'lucide-react';
 
+import { useContextMenu } from '../../desktop/ContextMenuProvider';
+import { useDesktopWorkspace } from '../../desktop/DesktopWorkspaceContext';
+
 function statusBadge(status: Equipment['status']) {
   const map: Record<Equipment['status'], { cls: string; icon: React.ReactNode; label: string }> = {
     Operational: { cls: 'badge-pass', icon: <CheckCircle2 className="w-3 h-3" />, label: 'Operational' },
@@ -20,6 +23,75 @@ function statusBadge(status: Equipment['status']) {
 
 function daysUntil(dateStr: string): number {
   return Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
+
+function EquipmentCard({
+  eq,
+  isSelected,
+  onSelect,
+}: {
+  eq: Equipment;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const { showContextMenu } = useContextMenu();
+  const { inspectObject } = useDesktopWorkspace();
+  const days = daysUntil(eq.nextCalibrationDue);
+
+  const handleClick = (e: React.MouseEvent) => {
+    onSelect();
+    inspectObject({
+      type: 'equipment',
+      id: eq.id,
+      title: `${eq.name} (${eq.assetTag})`,
+      subtitle: `${eq.manufacturer} ${eq.model} · Location: ${eq.location}`,
+    });
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    showContextMenu(e, {
+      type: 'equipment',
+      id: eq.id,
+      title: `${eq.name} (${eq.assetTag})`,
+      subtitle: `${eq.manufacturer} ${eq.model}`,
+    });
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      className={`card p-4 text-left w-full hover:border-brand-600/40 transition-all cursor-pointer select-none ${
+        isSelected ? 'border-brand-500/50 bg-brand-600/5' : ''
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-mono text-brand-400">{eq.assetTag}</p>
+          <p className="text-sm font-semibold text-surface-100 mt-0.5">{eq.name}</p>
+          <p className="text-xs text-surface-400">
+            {eq.manufacturer} {eq.model}
+          </p>
+        </div>
+        {statusBadge(eq.status)}
+      </div>
+      <div className="mt-3 flex items-center gap-4 text-xs text-surface-500">
+        <span>
+          <Calendar className="w-3 h-3 inline mr-1" />
+          Cal due: {eq.nextCalibrationDue}
+        </span>
+        <span className={`font-semibold ${days < 14 ? 'text-warning-400' : 'text-surface-400'}`}>
+          {days > 0 ? `${days}d left` : 'OVERDUE'}
+        </span>
+      </div>
+      <div className="mt-2 h-1.5 bg-surface-800 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${days < 14 ? 'bg-warning-500' : 'bg-success-500'}`}
+          style={{ width: `${Math.min(Math.max((days / 365) * 100, 5), 100)}%` }}
+        />
+      </div>
+    </div>
+  );
 }
 
 export function EquipmentAssetManager() {
@@ -41,32 +113,14 @@ export function EquipmentAssetManager() {
         <div className="flex gap-4">
           {/* Equipment cards */}
           <div className={`${selected ? 'w-72 flex-shrink-0' : 'flex-1'} space-y-3`}>
-            {equipment.map((eq) => {
-              const days = daysUntil(eq.nextCalibrationDue);
-              return (
-                <button key={eq.id} onClick={() => setSelected(eq.id === selected?.id ? null : eq)}
-                  className={`card p-4 text-left w-full hover:border-brand-600/40 transition-all ${selected?.id === eq.id ? 'border-brand-500/50 bg-brand-600/5' : ''}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-xs font-mono text-brand-400">{eq.assetTag}</p>
-                      <p className="text-sm font-semibold text-surface-100 mt-0.5">{eq.name}</p>
-                      <p className="text-xs text-surface-400">{eq.manufacturer} {eq.model}</p>
-                    </div>
-                    {statusBadge(eq.status)}
-                  </div>
-                  <div className="mt-3 flex items-center gap-4 text-xs text-surface-500">
-                    <span><Calendar className="w-3 h-3 inline mr-1" />Cal due: {eq.nextCalibrationDue}</span>
-                    <span className={`font-semibold ${days < 14 ? 'text-warning-400' : 'text-surface-400'}`}>
-                      {days > 0 ? `${days}d left` : 'OVERDUE'}
-                    </span>
-                  </div>
-                  <div className="mt-2 h-1.5 bg-surface-800 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full transition-all ${days < 14 ? 'bg-warning-500' : 'bg-success-500'}`}
-                      style={{ width: `${Math.min(Math.max((days / 365) * 100, 5), 100)}%` }} />
-                  </div>
-                </button>
-              );
-            })}
+            {equipment.map((eq) => (
+              <EquipmentCard
+                key={eq.id}
+                eq={eq}
+                isSelected={selected?.id === eq.id}
+                onSelect={() => setSelected(eq.id === selected?.id ? null : eq)}
+              />
+            ))}
           </div>
 
           {/* Equipment detail */}

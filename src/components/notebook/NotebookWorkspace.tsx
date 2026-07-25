@@ -12,11 +12,13 @@ import {
   Search, Star, ChevronRight, ChevronDown, Trash2, BookMarked, X,
 } from 'lucide-react';
 
-// ── Seed data ─────────────────────────────────────────────────
+// ── Seed data — run exactly once ─────────────────────────────
+let _seeded = false;
 
 async function seedIfEmpty() {
   const all = await globalNotebookService.getAll();
-  if (all.length > 0) return all;
+  if (all.length > 0 || _seeded) return all;
+  _seeded = true;
 
   const n1 = await globalNotebookService.createNotebook(
     'Havells MCCB — Temperature Rise Investigation',
@@ -159,13 +161,12 @@ export function NotebookWorkspace() {
   const loadNotebooks = useCallback(async () => {
     const all = await seedIfEmpty();
     setNotebooks(all);
-    if (!activeNb && all.length > 0) {
-      setActiveNb(all[0]);
-      setActivePage(all[0].pages[0] ?? null);
-      setExpandedNbs(new Set([all[0].id]));
-    }
+    setActiveNb((prev) => prev ?? (all.length > 0 ? all[0] : null));
+    setActivePage((prev) => prev ?? (all[0]?.pages[0] ?? null));
+    setExpandedNbs((prev) => prev.size > 0 ? prev : new Set(all[0] ? [all[0].id] : []));
     setLoading(false);
-  }, [activeNb]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // deliberately empty — runs only on mount
 
   useEffect(() => { loadNotebooks(); }, [loadNotebooks]);
 

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useLIMS } from '../../context/LIMSContext';
 import type { Sample, SampleLifecycleState } from '../../types';
 import { Package, Plus, ChevronRight, Clock, CheckCircle2, FlaskConical, Archive } from 'lucide-react';
+import { useContextMenu } from '../../desktop/ContextMenuProvider';
+import { useDesktopWorkspace } from '../../desktop/DesktopWorkspaceContext';
 
 const LIFECYCLE_STAGES: SampleLifecycleState[] = [
   'Received', 'Accepted', 'Inspection', 'Waiting',
@@ -18,10 +20,37 @@ function stageColor(state: SampleLifecycleState): string {
 }
 
 function SampleCard({ sample, onSelect }: { sample: Sample; onSelect: () => void }) {
+  const { showContextMenu } = useContextMenu();
+  const { inspectObject } = useDesktopWorkspace();
   const currentIdx = LIFECYCLE_STAGES.indexOf(sample.lifecycleState);
   const progress = Math.round(((currentIdx + 1) / LIFECYCLE_STAGES.length) * 100);
+
+  const handleInspect = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    inspectObject({
+      type: 'sample',
+      id: sample.id,
+      title: `${sample.specification.model} (${sample.reportNo})`,
+      subtitle: sample.clientName,
+    });
+    onSelect();
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    showContextMenu(e, {
+      type: 'sample',
+      id: sample.id,
+      title: `${sample.specification.model} (${sample.reportNo})`,
+      subtitle: sample.clientName,
+    });
+  };
+
   return (
-    <button onClick={onSelect} className="card p-4 text-left hover:border-brand-600/40 hover:bg-surface-800/60 transition-all w-full">
+    <div
+      onClick={handleInspect}
+      onContextMenu={handleContextMenu}
+      className="card p-4 text-left hover:border-brand-600/40 hover:bg-surface-800/60 transition-all w-full cursor-pointer select-none"
+    >
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-xs font-mono text-brand-400">{sample.reportNo}</p>
@@ -47,7 +76,7 @@ function SampleCard({ sample, onSelect }: { sample: Sample; onSelect: () => void
           <div className="h-full bg-brand-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 

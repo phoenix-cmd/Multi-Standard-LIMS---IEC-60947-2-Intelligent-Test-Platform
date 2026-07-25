@@ -1,6 +1,7 @@
 import type { Scenario, ScenarioConfig, ScenarioComparisonResult } from './ScenarioTypes';
 import { globalScenarioEngine } from './ScenarioEngine';
 import { globalEventBus } from '../core/events/EventBus';
+import { SCENARIO_TEMPLATES } from './ScenarioTemplates';
 
 function uid(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -46,12 +47,18 @@ export class ScenarioRunner {
   }
 
   findAll(): Scenario[] {
+    if (this._scenarios.size === 0) {
+      this.seedInitialScenarios();
+    }
     return Array.from(this._scenarios.values()).sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
   }
 
   findById(id: string): Scenario | null {
+    if (this._scenarios.size === 0) {
+      this.seedInitialScenarios();
+    }
     return this._scenarios.get(id) ?? null;
   }
 
@@ -100,6 +107,26 @@ export class ScenarioRunner {
 
     return { scenarioA: a, scenarioB: b, delta, winner, aiSummary };
   }
+
+  seedInitialScenarios(): void {
+    if (this._scenarios.size > 0) return;
+    if (!SCENARIO_TEMPLATES || SCENARIO_TEMPLATES.length === 0) return;
+
+    // Scenario 1: Normal Working Day (Pre-run)
+    const t1 = SCENARIO_TEMPLATES[0]; // normal-day
+    const s1 = this.create({ ...t1.defaultConfig, name: t1.name, description: t1.description });
+    this.run(s1.id);
+
+    // Scenario 2: Equipment Failure (Pre-run for Comparison)
+    const t3 = SCENARIO_TEMPLATES[2]; // equipment-failure
+    const s3 = this.create({ ...t3.defaultConfig, name: t3.name, description: t3.description });
+    this.run(s3.id);
+
+    // Scenario 3: Heavy Workload (Ready to Run)
+    const t2 = SCENARIO_TEMPLATES[1]; // heavy-workload
+    this.create({ ...t2.defaultConfig, name: t2.name, description: t2.description });
+  }
 }
 
 export const globalScenarioRunner = new ScenarioRunner();
+

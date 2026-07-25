@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { Scenario, ScenarioConfig, ScenarioTemplate } from '../../sandbox/ScenarioTypes';
 import { globalScenarioRunner } from '../../sandbox/ScenarioRunner';
 import { SCENARIO_TEMPLATES } from '../../sandbox/ScenarioTemplates';
@@ -8,7 +8,7 @@ import { ScenarioTimeline } from './ScenarioTimeline';
 import { ScenarioComparison } from './ScenarioComparison';
 import {
   FlaskConical, Play, BarChart3, Clock, GitCompare, Settings2,
-  Plus, Trash2, CheckCircle2, AlertCircle, Loader2, Circle
+  Plus, Trash2, CheckCircle2, AlertCircle, Loader2, Circle, Search
 } from 'lucide-react';
 
 type SandboxTab = 'builder' | 'results' | 'timeline' | 'compare';
@@ -24,29 +24,68 @@ const STATUS_CONFIG = {
 // ── Template picker ────────────────────────────────────────────
 
 function TemplatePicker({ onSelect }: { onSelect(t: ScenarioTemplate): void }) {
+  const [query, setQuery] = useState('');
+  const [filterDifficulty, setFilterDifficulty] = useState<'all' | 'easy' | 'medium' | 'hard'>('all');
+
+  const filtered = SCENARIO_TEMPLATES.filter((t) => {
+    const matchesSearch = t.name.toLowerCase().includes(query.toLowerCase()) || t.description.toLowerCase().includes(query.toLowerCase());
+    const matchesDiff = filterDifficulty === 'all' || t.difficulty === filterDifficulty;
+    return matchesSearch && matchesDiff;
+  });
+
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {SCENARIO_TEMPLATES.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => onSelect(t)}
-          className="text-left p-4 bg-surface-900 hover:bg-surface-800 border border-surface-800 hover:border-brand-500/40 rounded-2xl transition-all group"
-        >
-          <div className="text-2xl mb-2">{t.icon}</div>
-          <p className="text-sm font-bold text-surface-200 group-hover:text-brand-300 transition-colors">{t.name}</p>
-          <p className="text-xs text-surface-500 mt-1 leading-relaxed">{t.description}</p>
-          <div className="flex items-center gap-3 mt-3">
-            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-              t.difficulty === 'easy' ? 'bg-emerald-500/10 text-emerald-400' :
-              t.difficulty === 'medium' ? 'bg-yellow-500/10 text-yellow-400' :
-              'bg-red-500/10 text-red-400'
-            }`}>
-              {t.difficulty.toUpperCase()}
-            </span>
-            <span className="text-[10px] text-surface-600">{t.expectedDurationHours}h simulated</span>
-          </div>
-        </button>
-      ))}
+    <div className="space-y-4">
+      {/* Search & Filter */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-surface-500" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search all 10 scenario templates..."
+            className="w-full pl-9 pr-3 py-2 bg-surface-800 border border-surface-700 rounded-xl text-xs text-surface-100 placeholder-surface-500 focus:outline-none focus:border-brand-500"
+          />
+        </div>
+        <div className="flex items-center gap-1 bg-surface-800 p-1 rounded-xl border border-surface-700">
+          {(['all', 'easy', 'medium', 'hard'] as const).map((d) => (
+            <button
+              key={d}
+              onClick={() => setFilterDifficulty(d)}
+              className={`px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase transition-colors ${
+                filterDifficulty === d ? 'bg-brand-600 text-white' : 'text-surface-400 hover:text-surface-200'
+              }`}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {filtered.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => onSelect(t)}
+            className="text-left p-4 bg-surface-900 hover:bg-surface-800 border border-surface-800 hover:border-brand-500/40 rounded-2xl transition-all group flex flex-col justify-between"
+          >
+            <div>
+              <div className="text-2xl mb-2">{t.icon}</div>
+              <p className="text-sm font-bold text-surface-200 group-hover:text-brand-300 transition-colors">{t.name}</p>
+              <p className="text-xs text-surface-500 mt-1 leading-relaxed line-clamp-2">{t.description}</p>
+            </div>
+            <div className="flex items-center justify-between mt-3 pt-2 border-t border-surface-800/60">
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                t.difficulty === 'easy' ? 'bg-emerald-500/10 text-emerald-400' :
+                t.difficulty === 'medium' ? 'bg-yellow-500/10 text-yellow-400' :
+                'bg-red-500/10 text-red-400'
+              }`}>
+                {t.difficulty.toUpperCase()}
+              </span>
+              <span className="text-[10px] text-surface-600 font-mono">{t.expectedDurationHours}h sim</span>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -69,6 +108,16 @@ export function SandboxWorkspace() {
       if (updated) setActiveScenario(updated);
     }
   }, [activeScenario]);
+
+  useEffect(() => {
+    const all = globalScenarioRunner.findAll();
+    setScenarios(all);
+    if (all.length > 0) {
+      const firstCompleted = all.find((s) => s.status === 'completed') ?? all[0];
+      setActiveScenario(firstCompleted);
+      if (firstCompleted.status === 'completed') setTab('results');
+    }
+  }, []);
 
   const handleSelectTemplate = useCallback((tpl: ScenarioTemplate) => {
     setShowTemplatePicker(false);

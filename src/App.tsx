@@ -1,8 +1,17 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { LIMSProvider } from './context/LIMSContext';
+import { DesktopWorkspaceProvider, useDesktopWorkspace } from './desktop/DesktopWorkspaceContext';
+import { ContextMenuProvider } from './desktop/ContextMenuProvider';
+import { DesktopTabBar } from './desktop/DesktopTabBar';
+import { DesktopStatusBar } from './desktop/DesktopStatusBar';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopHeader } from './components/layout/TopHeader';
 import { AICopilotDrawer } from './components/ai/AICopilotDrawer';
+import { CommandPalette } from './components/ui/CommandPalette';
+import { PropertyInspector } from './components/ui/PropertyInspector';
+import { NotificationCenter } from './components/ui/NotificationCenter';
+import { KeyboardShortcutsModal } from './components/ui/KeyboardShortcutsModal';
+
 import { OperationsDashboard } from './components/dashboard/OperationsDashboard';
 import { QualityDashboard } from './components/dashboard/QualityDashboard';
 import { SampleRegistry } from './components/samples/SampleRegistry';
@@ -41,16 +50,16 @@ const PAGE_TITLES: Record<string, string> = {
 
 function Page({ children, path }: { children: React.ReactNode; path: string }) {
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       <TopHeader title={PAGE_TITLES[path] ?? 'LIMS'} />
-      <main className="flex-1 overflow-y-auto p-6">{children}</main>
+      <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   );
 }
 
 function Placeholder({ label }: { label: string }) {
   return (
-    <div className="card p-12 flex flex-col items-center justify-center text-center">
+    <div className="p-12 flex flex-col items-center justify-center text-center h-full">
       <p className="text-2xl font-black text-surface-100 mb-2">{label}</p>
       <p className="text-sm text-surface-400">This module is part of the enterprise LIMS platform and will be populated with full functionality.</p>
     </div>
@@ -63,38 +72,67 @@ function ConditionalAICopilotDrawer() {
   return <AICopilotDrawer />;
 }
 
+function DesktopShell() {
+  const { focusMode } = useDesktopWorkspace();
+
+  return (
+    <div className="flex flex-col h-screen overflow-hidden bg-surface-950">
+      {/* Top Tab Bar */}
+      <DesktopTabBar />
+
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar (hidden in focus mode) */}
+        {!focusMode && <Sidebar />}
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          <Routes>
+            <Route path="/" element={<Page path="/"><OperationsDashboard /></Page>} />
+            <Route path="/quality" element={<Page path="/quality"><QualityDashboard /></Page>} />
+            <Route path="/equipment" element={<Page path="/equipment"><EquipmentAssetManager /></Page>} />
+            <Route path="/samples" element={<Page path="/samples"><SampleRegistry /></Page>} />
+            <Route path="/wizard" element={<Page path="/wizard"><GuidedTestWizard /></Page>} />
+            <Route path="/oscillograph" element={<Page path="/oscillograph">
+              <div className="h-[600px] p-6"><AdvancedOscillographViewer /></div>
+            </Page>} />
+            <Route path="/replay" element={<Page path="/replay"><Placeholder label="Test Replay Engine" /></Page>} />
+            <Route path="/reports" element={<Page path="/reports"><ReportList /></Page>} />
+            <Route path="/standards" element={<Page path="/standards"><StandardManagerView /></Page>} />
+            <Route path="/audit" element={<Page path="/audit"><AuditTrailView /></Page>} />
+            <Route path="/settings" element={<Page path="/settings"><Placeholder label="Settings & RBAC Permissions" /></Page>} />
+            <Route path="/engineering" element={<EngineeringPlatform />} />
+            <Route path="/analytics" element={<Page path="/analytics"><AnalyticsDashboard /></Page>} />
+            <Route path="/workflow" element={<WorkflowEditor />} />
+            <Route path="/investigation" element={<InvestigationWorkspace />} />
+            <Route path="/notebook" element={<NotebookWorkspace />} />
+            <Route path="/sandbox" element={<SandboxWorkspace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </div>
+
+      {/* Persistent Status Bar */}
+      <DesktopStatusBar />
+
+      {/* Overlays & Drawers */}
+      <CommandPalette />
+      <PropertyInspector />
+      <NotificationCenter />
+      <KeyboardShortcutsModal />
+      <ConditionalAICopilotDrawer />
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <LIMSProvider>
-        <div className="flex h-screen overflow-hidden bg-surface-950">
-          <Sidebar />
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <Routes>
-              <Route path="/" element={<Page path="/"><OperationsDashboard /></Page>} />
-              <Route path="/quality" element={<Page path="/quality"><QualityDashboard /></Page>} />
-              <Route path="/equipment" element={<Page path="/equipment"><EquipmentAssetManager /></Page>} />
-              <Route path="/samples" element={<Page path="/samples"><SampleRegistry /></Page>} />
-              <Route path="/wizard" element={<Page path="/wizard"><GuidedTestWizard /></Page>} />
-              <Route path="/oscillograph" element={<Page path="/oscillograph">
-                <div className="h-[600px]"><AdvancedOscillographViewer /></div>
-              </Page>} />
-              <Route path="/replay" element={<Page path="/replay"><Placeholder label="Test Replay Engine" /></Page>} />
-              <Route path="/reports" element={<Page path="/reports"><ReportList /></Page>} />
-              <Route path="/standards" element={<Page path="/standards"><StandardManagerView /></Page>} />
-              <Route path="/audit" element={<Page path="/audit"><AuditTrailView /></Page>} />
-              <Route path="/settings" element={<Page path="/settings"><Placeholder label="Settings & RBAC Permissions" /></Page>} />
-              <Route path="/engineering" element={<EngineeringPlatform />} />
-              <Route path="/analytics" element={<Page path="/analytics"><AnalyticsDashboard /></Page>} />
-              <Route path="/workflow" element={<WorkflowEditor />} />
-              <Route path="/investigation" element={<InvestigationWorkspace />} />
-              <Route path="/notebook" element={<NotebookWorkspace />} />
-              <Route path="/sandbox" element={<SandboxWorkspace />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
-        </div>
-        <ConditionalAICopilotDrawer />
+        <DesktopWorkspaceProvider>
+          <ContextMenuProvider>
+            <DesktopShell />
+          </ContextMenuProvider>
+        </DesktopWorkspaceProvider>
       </LIMSProvider>
     </BrowserRouter>
   );
