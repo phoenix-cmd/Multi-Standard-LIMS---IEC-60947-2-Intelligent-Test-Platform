@@ -13,6 +13,9 @@ import { StandardManagerView } from './components/standards/StandardManagerView'
 import { AuditTrailView } from './components/audit/AuditTrailView';
 import { ReportList } from './components/reports/ReportList';
 import { EngineeringPlatform } from './components/engineering/EngineeringPlatform';
+import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
+import { WorkflowEditor } from './components/workflow/WorkflowEditor';
+import { InvestigationWorkspace } from './components/investigation/InvestigationWorkspace';
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Operations Dashboard',
@@ -27,6 +30,9 @@ const PAGE_TITLES: Record<string, string> = {
   '/audit': 'Audit Trail',
   '/settings': 'Settings & Permissions',
   '/engineering': 'Engineering Intelligence Platform',
+  '/analytics': 'Laboratory Analytics & Business Intelligence',
+  '/workflow': 'Visual Workflow Designer',
+  '/investigation': 'AI Root Cause Investigation Workspace',
 };
 
 function Page({ children, path }: { children: React.ReactNode; path: string }) {
@@ -75,6 +81,9 @@ export default function App() {
               <Route path="/audit" element={<Page path="/audit"><AuditTrailView /></Page>} />
               <Route path="/settings" element={<Page path="/settings"><Placeholder label="Settings & RBAC Permissions" /></Page>} />
               <Route path="/engineering" element={<EngineeringPlatform />} />
+              <Route path="/analytics" element={<Page path="/analytics"><AnalyticsDashboard /></Page>} />
+              <Route path="/workflow" element={<WorkflowEditor />} />
+              <Route path="/investigation" element={<InvestigationWorkspace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
