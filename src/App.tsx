@@ -16,6 +16,8 @@ import { EngineeringPlatform } from './components/engineering/EngineeringPlatfor
 import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
 import { WorkflowEditor } from './components/workflow/WorkflowEditor';
 import { InvestigationWorkspace } from './components/investigation/InvestigationWorkspace';
+import { NotebookWorkspace } from './components/notebook/NotebookWorkspace';
+import { SandboxWorkspace } from './components/sandbox/SandboxWorkspace';
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Operations Dashboard',
@@ -33,6 +35,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/analytics': 'Laboratory Analytics & Business Intelligence',
   '/workflow': 'Visual Workflow Designer',
   '/investigation': 'AI Root Cause Investigation Workspace',
+  '/notebook': 'Digital Engineering Notebook',
+  '/sandbox': 'Laboratory Scenario Sandbox',
 };
 
 function Page({ children, path }: { children: React.ReactNode; path: string }) {
@@ -84,6 +88,8 @@ export default function App() {
               <Route path="/analytics" element={<Page path="/analytics"><AnalyticsDashboard /></Page>} />
               <Route path="/workflow" element={<WorkflowEditor />} />
               <Route path="/investigation" element={<InvestigationWorkspace />} />
+              <Route path="/notebook" element={<NotebookWorkspace />} />
+              <Route path="/sandbox" element={<SandboxWorkspace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>

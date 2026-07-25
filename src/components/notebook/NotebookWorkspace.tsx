@@ -187,7 +187,7 @@ export function NotebookWorkspace() {
   const handleCreate = useCallback(async (title: string, context: string, templateId?: string) => {
     const nb = await globalNotebookService.createNotebook(
       title, context as Notebook['context'], 'Engineer',
-      { templateId: templateId as Notebook['context'] | undefined }
+      { templateId: templateId as import('../../domain/notebook/NotebookTypes').NotebookTemplateId | undefined }
     );
     await refresh();
     setActiveNb(nb);
