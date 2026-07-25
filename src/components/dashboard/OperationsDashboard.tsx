@@ -33,9 +33,9 @@ const verdictData = [
 ];
 
 function KPICard({ icon: Icon, label, value, sub, color = 'brand' }: {
-  icon: React.ElementType; label: string; value: string | number; sub?: string; color?: string;
+  icon: React.FC<{ className?: string }>; label: string; value: string | number; sub?: string; color?: string;
 }) {
-  const colorMap: Record<string, string> = {
+  const colorMap: { [key: string]: string } = {
     brand: 'text-brand-400 bg-brand-600/10 border-brand-600/20',
     success: 'text-success-400 bg-success-600/10 border-success-600/20',
     danger: 'text-danger-400 bg-danger-600/10 border-danger-600/20',

@@ -3,17 +3,20 @@ import { useLIMS } from '../../context/LIMSContext';
 import type { Sample } from '../../types';
 import { ReportValidator } from '../../engine/report-engine/core/ReportValidator';
 import type { ReportDocumentData } from '../../engine/report-engine/types/document';
-import { DocumentCompiler } from '../../engine/report-engine/core/DocumentCompiler';
+import { ReportComposer } from '../../engine/report-engine/core/ReportComposer';
+import { PackageExporter } from '../../engine/report-engine/core/PackageExporter';
+import { ReportDiffViewer } from './ReportDiffViewer';
 import { THEMES } from '../../engine/report-engine/themes/themeEngine';
-import { Printer, ShieldCheck, AlertTriangle, XCircle, ArrowLeft, Palette, History } from 'lucide-react';
+import { Printer, ShieldCheck, AlertTriangle, XCircle, ArrowLeft, Palette, History, Download, GitCompare } from 'lucide-react';
 
 export function ReportViewer({ sample, onClose }: { sample: Sample; onClose: () => void }) {
   const { equipment, users, auditEvents } = useLIMS();
 
   const [themeId, setThemeId] = useState<string>('havells');
   const [revision, setRevision] = useState<number>(1);
+  const [showDiffModal, setShowDiffModal] = useState<boolean>(false);
 
-  // Construct ReportDocumentData
+  // Construct current ReportDocumentData
   const reportDoc: ReportDocumentData = {
     sample,
     equipmentList: equipment,
@@ -25,12 +28,18 @@ export function ReportViewer({ sample, onClose }: { sample: Sample; onClose: () 
     themeId,
   };
 
+  // Construct Rev 1 document for comparison
+  const reportDocRev1: ReportDocumentData = {
+    ...reportDoc,
+    revision: 1,
+  };
+
   // Validate Document Integrity
   const valResult = ReportValidator.validate(reportDoc);
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Top Action Bar */}
+      {/* Action Bar */}
       <div className="card p-4 flex flex-wrap items-center justify-between gap-4 no-print border-brand-500/30">
         <div className="flex items-center gap-3">
           <button className="btn-secondary py-1.5 px-3 text-xs" onClick={onClose}>
@@ -38,7 +47,7 @@ export function ReportViewer({ sample, onClose }: { sample: Sample; onClose: () 
           </button>
           <div>
             <p className="text-sm font-bold text-surface-100">
-              Report Engine Preview: <span className="font-mono text-brand-400">{sample.reportNo}</span>
+              Report Engine: <span className="font-mono text-brand-400">{sample.reportNo}</span>
             </p>
             <p className="text-xs text-surface-400">
               {sample.clientName} · {sample.specification.model}
@@ -46,7 +55,7 @@ export function ReportViewer({ sample, onClose }: { sample: Sample; onClose: () 
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Theme Selector */}
           <div className="flex items-center gap-1.5 bg-surface-800 px-3 py-1.5 rounded border border-surface-700">
             <Palette className="w-3.5 h-3.5 text-brand-400" />
@@ -78,6 +87,24 @@ export function ReportViewer({ sample, onClose }: { sample: Sample; onClose: () 
             </select>
           </div>
 
+          {/* Diff Revisions Button */}
+          <button
+            className="btn-secondary text-xs py-1.5 px-3"
+            onClick={() => setShowDiffModal(true)}
+            title="Compare Rev 1.0 vs Rev 2.0"
+          >
+            <GitCompare className="w-3.5 h-3.5" /> Compare Revisions
+          </button>
+
+          {/* Export JSON Audit Package Button */}
+          <button
+            className="btn-secondary text-xs py-1.5 px-3 text-brand-300 border-brand-500/30"
+            onClick={() => PackageExporter.downloadPackageJSON(reportDoc)}
+            title="Export Machine-Readable JSON Audit Package"
+          >
+            <Download className="w-3.5 h-3.5" /> Export Package (JSON)
+          </button>
+
           {/* Print Button */}
           <button
             className={`btn-primary text-xs py-1.5 px-4 ${!valResult.canExport ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -89,7 +116,7 @@ export function ReportViewer({ sample, onClose }: { sample: Sample; onClose: () 
         </div>
       </div>
 
-      {/* Validation Panel */}
+      {/* Validation Status Bar */}
       <div className="card p-3 no-print">
         <div className="flex items-center gap-3">
           {valResult.valid ? (
@@ -118,10 +145,19 @@ export function ReportViewer({ sample, onClose }: { sample: Sample; onClose: () 
         </div>
       </div>
 
-      {/* Document Compiler View */}
+      {/* Report Composer View */}
       <div className="overflow-x-auto pb-12">
-        <DocumentCompiler data={reportDoc} />
+        <ReportComposer data={reportDoc} />
       </div>
+
+      {/* Revision Diff Viewer Modal */}
+      {showDiffModal && (
+        <ReportDiffViewer
+          docRevA={reportDocRev1}
+          docRevB={reportDoc}
+          onClose={() => setShowDiffModal(false)}
+        />
+      )}
     </div>
   );
 }

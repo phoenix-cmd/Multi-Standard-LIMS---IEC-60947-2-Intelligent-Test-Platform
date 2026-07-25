@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, FlaskConical, Package, Cpu, Settings,
-  ClipboardList, FileText, History, Zap, BookOpen, ChevronRight, Shield
+  ClipboardList, FileText, History, Zap, BookOpen, Shield, BrainCircuit
 } from 'lucide-react';
 import { useLIMS } from '../../context/LIMSContext';
 
@@ -14,6 +14,8 @@ const NAV = [
   { label: 'Test Wizard', to: '/wizard', icon: FlaskConical },
   { label: 'Oscillograph', to: '/oscillograph', icon: Zap },
   { label: 'Test Replay', to: '/replay', icon: History },
+  null,
+  { label: 'Engineering AI', to: '/engineering', icon: BrainCircuit },
   null,
   { label: 'Reports', to: '/reports', icon: FileText },
   { label: 'Standards', to: '/standards', icon: BookOpen },

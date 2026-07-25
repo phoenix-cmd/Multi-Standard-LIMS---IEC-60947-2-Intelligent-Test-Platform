@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { LIMSProvider } from './context/LIMSContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopHeader } from './components/layout/TopHeader';
@@ -12,6 +12,7 @@ import { EquipmentAssetManager } from './components/equipment/EquipmentAssetMana
 import { StandardManagerView } from './components/standards/StandardManagerView';
 import { AuditTrailView } from './components/audit/AuditTrailView';
 import { ReportList } from './components/reports/ReportList';
+import { EngineeringPlatform } from './components/engineering/EngineeringPlatform';
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Operations Dashboard',
@@ -25,6 +26,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/standards': 'Standard Manager',
   '/audit': 'Audit Trail',
   '/settings': 'Settings & Permissions',
+  '/engineering': 'Engineering Intelligence Platform',
 };
 
 function Page({ children, path }: { children: React.ReactNode; path: string }) {
@@ -43,6 +45,12 @@ function Placeholder({ label }: { label: string }) {
       <p className="text-sm text-surface-400">This module is part of the enterprise LIMS platform and will be populated with full functionality.</p>
     </div>
   );
+}
+
+function ConditionalAICopilotDrawer() {
+  const location = useLocation();
+  if (location.pathname === '/engineering') return null;
+  return <AICopilotDrawer />;
 }
 
 export default function App() {
@@ -66,11 +74,12 @@ export default function App() {
               <Route path="/standards" element={<Page path="/standards"><StandardManagerView /></Page>} />
               <Route path="/audit" element={<Page path="/audit"><AuditTrailView /></Page>} />
               <Route path="/settings" element={<Page path="/settings"><Placeholder label="Settings & RBAC Permissions" /></Page>} />
+              <Route path="/engineering" element={<EngineeringPlatform />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
         </div>
-        <AICopilotDrawer />
+        <ConditionalAICopilotDrawer />
       </LIMSProvider>
     </BrowserRouter>
   );
