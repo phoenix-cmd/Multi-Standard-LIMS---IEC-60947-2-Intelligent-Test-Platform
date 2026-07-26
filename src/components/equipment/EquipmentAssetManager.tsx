@@ -1,23 +1,24 @@
 import { useState } from 'react';
 import { useLIMS } from '../../context/LIMSContext';
-import type { Equipment } from '../../types';
+import type { Equipment, EquipmentStatus } from '../../types';
 import {
   Wrench, AlertTriangle, CheckCircle2, XCircle, Clock,
-  QrCode, Calendar, Activity, FileText
+  QrCode, Calendar, Activity, FileText, Plus, X
 } from 'lucide-react';
 
 import { useContextMenu } from '../../desktop/ContextMenuProvider';
 import { useDesktopWorkspace } from '../../desktop/DesktopWorkspaceContext';
+import { v4 as uuidv4 } from 'uuid';
 
-function statusBadge(status: Equipment['status']) {
-  const map: Record<Equipment['status'], { cls: string; icon: React.ReactNode; label: string }> = {
+function statusBadge(status: EquipmentStatus) {
+  const map: Record<EquipmentStatus, { cls: string; icon: React.ReactNode; label: string }> = {
     Operational: { cls: 'badge-pass', icon: <CheckCircle2 className="w-3 h-3" />, label: 'Operational' },
     CalibrationDue: { cls: 'badge-warn', icon: <Clock className="w-3 h-3" />, label: 'Cal. Due' },
     Maintenance: { cls: 'badge-warn', icon: <Wrench className="w-3 h-3" />, label: 'Maintenance' },
     OutOfService: { cls: 'badge-fail', icon: <XCircle className="w-3 h-3" />, label: 'Out of Service' },
     Quarantined: { cls: 'badge-fail', icon: <AlertTriangle className="w-3 h-3" />, label: 'Quarantined' },
   };
-  const { cls, icon, label } = map[status];
+  const { cls, icon, label } = map[status] || map.Operational;
   return <span className={cls}>{icon}{label}</span>;
 }
 
@@ -38,7 +39,7 @@ function EquipmentCard({
   const { inspectObject } = useDesktopWorkspace();
   const days = daysUntil(eq.nextCalibrationDue);
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = () => {
     onSelect();
     inspectObject({
       type: 'equipment',
@@ -96,24 +97,82 @@ function EquipmentCard({
 
 export function EquipmentAssetManager() {
   const { equipment } = useLIMS();
+  const [localEquipment, setLocalEquipment] = useState<Equipment[]>(equipment);
   const [selected, setSelected] = useState<Equipment | null>(null);
   const [tab, setTab] = useState<'list' | 'calibration'>('list');
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // Form State
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('Measurement');
+  const [manufacturer, setManufacturer] = useState('Tektronix');
+  const [model, setModel] = useState('MSO-54B');
+  const [location, setLocation] = useState('HV Lab Bay 1');
+  const [calDue, setCalDue] = useState('2026-12-31');
+
+  const handleAddEquipment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    const tag = `LAB-EQ-00${localEquipment.length + 1}`;
+    const newEq: Equipment = {
+      id: uuidv4(),
+      assetTag: tag,
+      name,
+      model,
+      manufacturer,
+      serialNo: `${manufacturer.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-6)}`,
+      category,
+      location,
+      status: 'Operational',
+      hoursUsed: 120,
+      lastUsedDate: new Date().toISOString().split('T')[0],
+      purchaseDate: new Date().toISOString().split('T')[0],
+      nextCalibrationDue: calDue,
+      currentCertNo: `NABL-CERT-${Date.now().toString().slice(-4)}`,
+      qrCode: tag,
+      photos: [],
+      calibrationHistory: [
+        {
+          id: uuidv4(),
+          date: new Date().toISOString().split('T')[0],
+          nextDue: calDue,
+          performedBy: 'Certified NABL Auditor',
+          certificateNo: `NABL-CERT-${Date.now().toString().slice(-4)}`,
+          result: 'Pass',
+          notes: 'Initial commissioning calibration verified.',
+        },
+      ],
+    };
+
+    setLocalEquipment((prev) => [newEq, ...prev]);
+    setName('');
+    setShowAddModal(false);
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        {(['list', 'calibration'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={tab === t ? 'btn-primary py-1.5 px-4 text-xs' : 'btn-secondary py-1.5 px-4 text-xs'}>
-            {t === 'list' ? 'Asset Register' : 'Calibration Schedule'}
-          </button>
-        ))}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          {(['list', 'calibration'] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} className={tab === t ? 'btn-primary py-1.5 px-4 text-xs' : 'btn-secondary py-1.5 px-4 text-xs'}>
+              {t === 'list' ? 'Asset Register' : 'Calibration Schedule'}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Add New Asset
+        </button>
       </div>
 
       {tab === 'list' && (
         <div className="flex gap-4">
           {/* Equipment cards */}
           <div className={`${selected ? 'w-72 flex-shrink-0' : 'flex-1'} space-y-3`}>
-            {equipment.map((eq) => (
+            {localEquipment.map((eq) => (
               <EquipmentCard
                 key={eq.id}
                 eq={eq}
@@ -156,7 +215,7 @@ export function EquipmentAssetManager() {
                   ))}
                 </div>
 
-                {/* QR code placeholder */}
+                {/* QR code */}
                 <div className="mt-4 flex items-center gap-3 p-3 bg-surface-800 rounded-lg">
                   <QrCode className="w-8 h-8 text-brand-400" />
                   <div>
@@ -207,7 +266,7 @@ export function EquipmentAssetManager() {
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-800/60">
-              {[...equipment].sort((a, b) => new Date(a.nextCalibrationDue).getTime() - new Date(b.nextCalibrationDue).getTime()).map((eq) => {
+              {[...localEquipment].sort((a, b) => new Date(a.nextCalibrationDue).getTime() - new Date(b.nextCalibrationDue).getTime()).map((eq) => {
                 const days = daysUntil(eq.nextCalibrationDue);
                 return (
                   <tr key={eq.id} className="hover:bg-surface-800/30">
@@ -224,6 +283,94 @@ export function EquipmentAssetManager() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal for adding new equipment */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-900 border border-surface-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-surface-800 pb-3">
+              <h3 className="text-sm font-bold text-surface-50 flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-brand-400" /> Register New Asset
+              </h3>
+              <button onClick={() => setShowAddModal(false)} className="text-surface-400 hover:text-surface-100">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddEquipment} className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-surface-400 uppercase tracking-wide mb-1">Equipment Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. High-Power Injection Transformer"
+                  required
+                  className="w-full bg-surface-950 border border-surface-800 rounded-xl px-3 py-2 text-xs text-surface-100 focus:outline-none focus:border-brand-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-surface-400 uppercase tracking-wide mb-1">Manufacturer</label>
+                  <input
+                    type="text"
+                    value={manufacturer}
+                    onChange={(e) => setManufacturer(e.target.value)}
+                    className="w-full bg-surface-950 border border-surface-800 rounded-xl px-3 py-2 text-xs text-surface-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-surface-400 uppercase tracking-wide mb-1">Model</label>
+                  <input
+                    type="text"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="w-full bg-surface-950 border border-surface-800 rounded-xl px-3 py-2 text-xs text-surface-100"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-surface-400 uppercase tracking-wide mb-1">Location / Bay</label>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full bg-surface-950 border border-surface-800 rounded-xl px-3 py-2 text-xs text-surface-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-surface-400 uppercase tracking-wide mb-1">Calibration Due</label>
+                  <input
+                    type="date"
+                    value={calDue}
+                    onChange={(e) => setCalDue(e.target.value)}
+                    className="w-full bg-surface-950 border border-surface-800 rounded-xl px-3 py-2 text-xs text-surface-100"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-3 py-1.5 bg-surface-800 text-surface-300 rounded-lg text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold shadow"
+                >
+                  Register Asset
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

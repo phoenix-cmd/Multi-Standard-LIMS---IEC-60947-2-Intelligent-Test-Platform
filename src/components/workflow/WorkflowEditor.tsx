@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WorkflowCanvas } from './WorkflowCanvas';
 import { WorkflowToolbar } from './WorkflowToolbar';
 import { WorkflowProperties } from './WorkflowProperties';
 import { WorkflowDSLEditor } from './WorkflowDSLEditor';
-import type { WorkflowDefinition, WorkflowNodeData } from '../../workflow-designer/WorkflowTypes';
+import type { WorkflowDefinition, WorkflowNodeData, WorkflowNodeType } from '../../workflow-designer/WorkflowTypes';
 import { globalWorkflowSimulator } from '../../workflow-designer/WorkflowSimulator';
 
 const INITIAL_WORKFLOW: WorkflowDefinition = {
@@ -37,7 +37,10 @@ const INITIAL_WORKFLOW: WorkflowDefinition = {
 };
 
 export function WorkflowEditor() {
-  const [workflow, setWorkflow] = useState<WorkflowDefinition>(INITIAL_WORKFLOW);
+  const [workflow, setWorkflow] = useState<WorkflowDefinition>(() => {
+    const saved = localStorage.getItem('lims_saved_workflow');
+    return saved ? JSON.parse(saved) : INITIAL_WORKFLOW;
+  });
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'visual' | 'dsl'>('visual');
 
@@ -46,6 +49,67 @@ export function WorkflowEditor() {
       ...prev,
       nodes: prev.nodes.map((n) => (n.id === updatedNode.id ? updatedNode : n)),
     }));
+  };
+
+  const handleUpdateNodePosition = (id: string, pos: { x: number; y: number }) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      nodes: prev.nodes.map((n) => (n.id === id ? { ...n, position: pos } : n)),
+    }));
+  };
+
+  const handleAddNode = (type: WorkflowNodeType) => {
+    const newId = `node-${Date.now().toString().slice(-4)}`;
+    const labels: Partial<Record<WorkflowNodeType, string>> = {
+      start: 'Start Execution',
+      end: 'Complete Sequence',
+      test: 'New Test Clause',
+      decision: 'Pass / Fail Criteria',
+      manual_action: 'Manual Inspection',
+      report: 'Compile Report',
+    };
+    const newNode: WorkflowNodeData = {
+      id: newId,
+      type,
+      label: labels[type] || 'New Step',
+      position: { x: 300 + Math.random() * 200, y: 150 + Math.random() * 100 },
+      estimatedMinutes: 15,
+      requiredRole: 'Lab Engineer',
+    };
+    setWorkflow((prev) => ({
+      ...prev,
+      nodes: [...prev.nodes, newNode],
+    }));
+    setSelectedNodeId(newId);
+  };
+
+  const handleDeleteNode = (nodeId: string) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      nodes: prev.nodes.filter((n) => n.id !== nodeId),
+      edges: prev.edges.filter((e) => e.sourceId !== nodeId && e.targetId !== nodeId),
+    }));
+    if (selectedNodeId === nodeId) setSelectedNodeId(null);
+  };
+
+  const handleAddEdge = (sourceId: string, targetId: string, label?: string) => {
+    const edgeId = `edge-${Date.now().toString().slice(-4)}`;
+    setWorkflow((prev) => ({
+      ...prev,
+      edges: [...prev.edges, { id: edgeId, sourceId, targetId, label }],
+    }));
+  };
+
+  const handleDeleteEdge = (edgeId: string) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      edges: prev.edges.filter((e) => e.id !== edgeId),
+    }));
+  };
+
+  const handleSave = () => {
+    localStorage.setItem('lims_saved_workflow', JSON.stringify(workflow));
+    alert('Workflow saved successfully!');
   };
 
   const handleSimulate = () => {
@@ -66,6 +130,8 @@ export function WorkflowEditor() {
         viewMode={viewMode}
         setViewMode={setViewMode}
         onSimulate={handleSimulate}
+        onAddNode={handleAddNode}
+        onSave={handleSave}
       />
 
       <div className="flex-1 overflow-hidden flex relative">
@@ -74,17 +140,26 @@ export function WorkflowEditor() {
             workflow={workflow}
             selectedNodeId={selectedNodeId}
             onSelectNode={setSelectedNodeId}
+            onUpdateNodePosition={handleUpdateNodePosition}
+            onDeleteEdge={handleDeleteEdge}
           />
         ) : (
-          <WorkflowDSLEditor workflow={workflow} />
+          <WorkflowDSLEditor
+            workflow={workflow}
+            onUpdateWorkflow={setWorkflow}
+          />
         )}
 
         {/* Node Properties Panel */}
         {selectedNode && (
           <WorkflowProperties
             node={selectedNode}
+            workflow={workflow}
             onClose={() => setSelectedNodeId(null)}
             onUpdate={handleNodeUpdate}
+            onDeleteNode={handleDeleteNode}
+            onAddEdge={handleAddEdge}
+            onDeleteEdge={handleDeleteEdge}
           />
         )}
       </div>

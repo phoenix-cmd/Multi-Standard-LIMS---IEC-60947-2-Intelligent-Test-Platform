@@ -13,6 +13,8 @@ export type WorkflowNodeType =
   | 'script'
   | 'ai_decision';
 
+export type NodeType = WorkflowNodeType;
+
 export interface WorkflowNodeData {
   id: string;
   type: WorkflowNodeType;

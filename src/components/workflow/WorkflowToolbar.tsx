@@ -1,6 +1,6 @@
 import React from 'react';
-import type { WorkflowDefinition } from '../../workflow-designer/WorkflowTypes';
-import { Play, Code, Layers, CheckCircle2, FileText, Share2 } from 'lucide-react';
+import type { WorkflowDefinition, NodeType } from '../../workflow-designer/WorkflowTypes';
+import { Play, Code, Layers, CheckCircle2, Plus, Save } from 'lucide-react';
 import { globalWorkflowValidator } from '../../workflow-designer/WorkflowValidator';
 
 interface WorkflowToolbarProps {
@@ -8,14 +8,23 @@ interface WorkflowToolbarProps {
   viewMode: 'visual' | 'dsl';
   setViewMode: (m: 'visual' | 'dsl') => void;
   onSimulate: () => void;
+  onAddNode: (type: NodeType) => void;
+  onSave: () => void;
 }
 
-export function WorkflowToolbar({ workflow, viewMode, setViewMode, onSimulate }: WorkflowToolbarProps) {
+export function WorkflowToolbar({
+  workflow,
+  viewMode,
+  setViewMode,
+  onSimulate,
+  onAddNode,
+  onSave,
+}: WorkflowToolbarProps) {
   const issues = globalWorkflowValidator.validate(workflow);
   const errors = issues.filter((i) => i.type === 'error');
 
   return (
-    <div className="px-4 py-3 border-b border-surface-800 bg-surface-900 flex items-center justify-between gap-4 flex-shrink-0">
+    <div className="px-4 py-3 border-b border-surface-800 bg-surface-900 flex flex-wrap items-center justify-between gap-4 flex-shrink-0">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
           <Layers className="w-4 h-4 text-purple-400" />
@@ -29,6 +38,35 @@ export function WorkflowToolbar({ workflow, viewMode, setViewMode, onSimulate }:
           </div>
           <p className="text-[10px] text-surface-400">{workflow.description}</p>
         </div>
+      </div>
+
+      {/* Palette Node Creators */}
+      <div className="flex items-center gap-1.5 bg-surface-950 p-1 rounded-xl border border-surface-800">
+        <span className="text-[10px] font-mono font-bold text-surface-400 px-2">Add Step:</span>
+        <button
+          onClick={() => onAddNode('test')}
+          className="px-2 py-1 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/30 rounded text-[10px] font-bold text-brand-400 flex items-center gap-1 transition-all"
+        >
+          <Plus className="w-3 h-3" /> Test
+        </button>
+        <button
+          onClick={() => onAddNode('decision')}
+          className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded text-[10px] font-bold text-amber-400 flex items-center gap-1 transition-all"
+        >
+          <Plus className="w-3 h-3" /> Decision
+        </button>
+        <button
+          onClick={() => onAddNode('manual_action')}
+          className="px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded text-[10px] font-bold text-purple-400 flex items-center gap-1 transition-all"
+        >
+          <Plus className="w-3 h-3" /> Action
+        </button>
+        <button
+          onClick={() => onAddNode('report')}
+          className="px-2 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded text-[10px] font-bold text-cyan-400 flex items-center gap-1 transition-all"
+        >
+          <Plus className="w-3 h-3" /> Report
+        </button>
       </div>
 
       <div className="flex items-center gap-2">
@@ -62,6 +100,14 @@ export function WorkflowToolbar({ workflow, viewMode, setViewMode, onSimulate }:
             {errors.length} Error(s)
           </span>
         )}
+
+        {/* Save button */}
+        <button
+          onClick={onSave}
+          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-surface-800 hover:bg-surface-700 border border-surface-700 text-surface-100 transition-colors"
+        >
+          <Save className="w-3.5 h-3.5" /> Save Workflow
+        </button>
 
         {/* Simulate button */}
         <button

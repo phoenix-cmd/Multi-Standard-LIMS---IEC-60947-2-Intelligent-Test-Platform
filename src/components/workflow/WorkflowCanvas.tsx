@@ -1,34 +1,72 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import type { WorkflowDefinition, WorkflowNodeData } from '../../workflow-designer/WorkflowTypes';
-import { Play, CheckCircle2, AlertTriangle, Cpu, Layers } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
 interface WorkflowCanvasProps {
   workflow: WorkflowDefinition;
   selectedNodeId: string | null;
   onSelectNode: (id: string | null) => void;
+  onUpdateNodePosition: (id: string, pos: { x: number; y: number }) => void;
+  onDeleteEdge: (edgeId: string) => void;
 }
 
 const NODE_STYLE: Record<string, { bg: string; border: string; text: string }> = {
-  start:           { bg: 'bg-emerald-500/10', border: 'border-emerald-500/40', text: 'text-emerald-400' },
-  end:             { bg: 'bg-red-500/10',     border: 'border-red-500/40',     text: 'text-red-400' },
-  test:            { bg: 'bg-brand-500/10',   border: 'border-brand-500/40',   text: 'text-brand-400' },
-  decision:        { bg: 'bg-amber-500/10',   border: 'border-amber-500/40',   text: 'text-amber-400' },
-  manual_action:   { bg: 'bg-purple-500/10',  border: 'border-purple-500/40',  text: 'text-purple-400' },
-  report:          { bg: 'bg-cyan-500/10',    border: 'border-cyan-500/40',    text: 'text-cyan-400' },
+  start:         { bg: 'bg-emerald-500/10', border: 'border-emerald-500/40', text: 'text-emerald-400' },
+  end:           { bg: 'bg-red-500/10',     border: 'border-red-500/40',     text: 'text-red-400' },
+  test:          { bg: 'bg-brand-500/10',   border: 'border-brand-500/40',   text: 'text-brand-400' },
+  decision:      { bg: 'bg-amber-500/10',   border: 'border-amber-500/40',   text: 'text-amber-400' },
+  manual_action: { bg: 'bg-purple-500/10',  border: 'border-purple-500/40',  text: 'text-purple-400' },
+  report:        { bg: 'bg-cyan-500/10',    border: 'border-cyan-500/40',    text: 'text-cyan-400' },
 };
 
-export function WorkflowCanvas({ workflow, selectedNodeId, onSelectNode }: WorkflowCanvasProps) {
+export function WorkflowCanvas({
+  workflow,
+  selectedNodeId,
+  onSelectNode,
+  onUpdateNodePosition,
+  onDeleteEdge,
+}: WorkflowCanvasProps) {
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent, node: WorkflowNodeData) => {
+    e.stopPropagation();
+    onSelectNode(node.id);
+    setDraggingNodeId(node.id);
+    setDragOffset({
+      x: e.clientX - node.position.x,
+      y: e.clientY - node.position.y,
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!draggingNodeId || !canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const newX = Math.max(20, Math.min(1800, e.clientX - rect.left - dragOffset.x + canvasRef.current.scrollLeft));
+    const newY = Math.max(20, Math.min(1000, e.clientY - rect.top - dragOffset.y + canvasRef.current.scrollTop));
+    onUpdateNodePosition(draggingNodeId, { x: newX, y: newY });
+  };
+
+  const handleMouseUp = () => {
+    setDraggingNodeId(null);
+  };
+
   return (
     <div
+      ref={canvasRef}
       onClick={() => onSelectNode(null)}
-      className="flex-1 h-full relative overflow-auto bg-surface-950 p-8 cursor-grab active:cursor-grabbing select-none"
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      className="flex-1 h-full relative overflow-auto bg-surface-950 p-8 cursor-crosshair select-none"
       style={{
         backgroundImage: 'radial-gradient(circle, #334155 1px, transparent 1px)',
         backgroundSize: '24px 24px',
       }}
     >
       {/* SVG Canvas Edges */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+      <svg className="absolute inset-0 w-[2000px] h-[1200px] pointer-events-none z-0">
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
@@ -39,9 +77,9 @@ export function WorkflowCanvas({ workflow, selectedNodeId, onSelectNode }: Workf
           const tgt = workflow.nodes.find((n) => n.id === e.targetId);
           if (!src || !tgt) return null;
 
-          const x1 = src.position.x + 80;
+          const x1 = src.position.x + 88;
           const y1 = src.position.y + 40;
-          const x2 = tgt.position.x + 80;
+          const x2 = tgt.position.x + 88;
           const y2 = tgt.position.y + 40;
 
           const dx = x2 - x1;
@@ -51,8 +89,15 @@ export function WorkflowCanvas({ workflow, selectedNodeId, onSelectNode }: Workf
           const pathStr = `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`;
 
           return (
-            <g key={e.id}>
-              <path d={pathStr} stroke="#475569" strokeWidth="2" fill="none" markerEnd="url(#arrow)" />
+            <g key={e.id} className="group pointer-events-auto cursor-pointer">
+              <path
+                d={pathStr}
+                stroke="#475569"
+                strokeWidth="3"
+                fill="none"
+                markerEnd="url(#arrow)"
+                className="group-hover:stroke-brand-400 transition-colors"
+              />
               {e.label && (
                 <text
                   x={(x1 + x2) / 2}
@@ -80,19 +125,19 @@ export function WorkflowCanvas({ workflow, selectedNodeId, onSelectNode }: Workf
         return (
           <div
             key={node.id}
-            onClick={(e) => { e.stopPropagation(); onSelectNode(node.id); }}
+            onMouseDown={(e) => handleMouseDown(e, node)}
             style={{ left: `${node.position.x}px`, top: `${node.position.y}px` }}
             className={`
-              absolute w-44 rounded-xl border p-3 shadow-xl transition-all cursor-pointer z-10
+              absolute w-44 rounded-xl border p-3 shadow-xl transition-all cursor-move z-10
               ${style.bg} ${style.border}
-              ${isSelected ? 'ring-2 ring-brand-500 scale-105' : 'hover:scale-102'}
+              ${isSelected ? 'ring-2 ring-brand-500 scale-105 shadow-brand-500/20' : 'hover:scale-102'}
               ${isRunning ? 'animate-pulse ring-2 ring-blue-500' : ''}
             `}
           >
             <div className="flex items-center justify-between mb-1">
               <span className={`text-[9px] font-bold uppercase tracking-wide ${style.text}`}>{node.type}</span>
               {node.clauseId && (
-                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-surface-800 text-brand-400">
+                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-surface-800 text-brand-400 border border-surface-700">
                   Cl. {node.clauseId}
                 </span>
               )}

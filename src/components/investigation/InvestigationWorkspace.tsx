@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { InvestigationCase } from '../../investigation/CaseTypes';
 import { CaseListPanel } from './CaseListPanel';
 import { EvidenceGraphViewer } from './EvidenceGraphViewer';
@@ -6,6 +6,7 @@ import { AITimelineView } from './AITimelineView';
 import { WhiteboardCanvas } from './WhiteboardCanvas';
 import { FinalReportCompiler } from './FinalReportCompiler';
 import { Search, AlertTriangle, ShieldCheck, FileText, Activity, Users, Layers } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
 const INITIAL_CASES: InvestigationCase[] = [
   {
@@ -49,9 +50,50 @@ const INITIAL_CASES: InvestigationCase[] = [
 ];
 
 export function InvestigationWorkspace() {
-  const [cases, setCases] = useState<InvestigationCase[]>(INITIAL_CASES);
-  const [activeCaseId, setActiveCaseId] = useState<string>(INITIAL_CASES[0].id);
+  const [cases, setCases] = useState<InvestigationCase[]>(() => {
+    const saved = localStorage.getItem('lims_investigation_cases');
+    return saved ? JSON.parse(saved) : INITIAL_CASES;
+  });
+  const [activeCaseId, setActiveCaseId] = useState<string>(cases[0]?.id || INITIAL_CASES[0].id);
   const [activeTab, setActiveTab] = useState<'evidence' | 'timeline' | 'whiteboard' | 'report'>('evidence');
+
+  useEffect(() => {
+    localStorage.setItem('lims_investigation_cases', JSON.stringify(cases));
+  }, [cases]);
+
+  const handleCreateCase = (title: string, clauseId: string, leadEngineer: string) => {
+    const newCaseId = `CASE-2026-${String(cases.length + 1).padStart(3, '0')}`;
+    const newCase: InvestigationCase = {
+      id: newCaseId,
+      title,
+      sampleId: 'sample-001',
+      reportNo: `LAB-2026-MCCB-00${Math.floor(Math.random() * 800) + 100}`,
+      clauseId,
+      status: 'in_progress',
+      leadEngineer,
+      assignedEngineers: [leadEngineer],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      evidence: [],
+      timeline: [
+        {
+          id: uuidv4(),
+          timestamp: new Date().toISOString(),
+          author: leadEngineer,
+          isAI: false,
+          title: 'Investigation Case Opened',
+          details: `Root cause analysis initiated for Clause ${clauseId}.`,
+        },
+      ],
+      rootCauses: [],
+      correctiveActions: ['Perform diagnostic measurement sweep'],
+      preventiveActions: ['Review test sequence configuration'],
+      whiteboardNotes: [],
+    };
+
+    setCases((prev) => [newCase, ...prev]);
+    setActiveCaseId(newCaseId);
+  };
 
   const activeCase = cases.find((c) => c.id === activeCaseId) ?? cases[0];
 
@@ -65,13 +107,13 @@ export function InvestigationWorkspace() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xs font-bold text-surface-100">{activeCase.title}</h2>
+              <h2 className="text-xs font-bold text-surface-100">{activeCase?.title}</h2>
               <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 uppercase">
-                {activeCase.status.replace('_', ' ')}
+                {activeCase?.status?.replace('_', ' ') || 'Active'}
               </span>
             </div>
             <p className="text-[10px] text-surface-400">
-              Case ID: {activeCase.id} · Report: {activeCase.reportNo} · Lead: {activeCase.leadEngineer}
+              Case ID: {activeCase?.id} · Report: {activeCase?.reportNo} · Lead: {activeCase?.leadEngineer}
             </p>
           </div>
         </div>
@@ -96,7 +138,12 @@ export function InvestigationWorkspace() {
       <div className="flex-1 overflow-hidden flex">
         {/* Left: Case List Selector */}
         <div className="w-72 border-r border-surface-800 flex-shrink-0 overflow-y-auto">
-          <CaseListPanel cases={cases} activeCaseId={activeCaseId} onSelectCase={setActiveCaseId} />
+          <CaseListPanel
+            cases={cases}
+            activeCaseId={activeCaseId}
+            onSelectCase={setActiveCaseId}
+            onCreateCase={handleCreateCase}
+          />
         </div>
 
         {/* Centre: Dynamic Quad Views */}
