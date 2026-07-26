@@ -213,8 +213,11 @@ export interface WaveformChannel {
 }
 
 export interface WaveformSnapshot {
+  eventId?: string;
   sampleRate: number;  // samples/sec e.g. 100000
+  sampleRateHz?: number;
   duration: number;    // seconds
+  durationMs?: number;
   channels: WaveformChannel[];
   peakCurrent?: number;
   arcDuration?: number;

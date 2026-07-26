@@ -8,10 +8,11 @@ import type { TestRun, ClauseResult, Verdict, FormSchema } from '../../types';
 import { FORM_SCHEMAS } from '../../mock/enterpriseInitialData';
 import {
   ChevronRight, ChevronLeft, CheckCircle2, XCircle, AlertCircle,
-  FlaskConical, Zap, FileText, Bot
+  FlaskConical, Zap, FileText, Bot, ShieldAlert, Wrench
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { AdvancedOscillographViewer } from '../oscillograph/AdvancedOscillographViewer';
+import { EquipmentGuard } from '../../platform/equipment/domain/EquipmentGuard';
 
 const SEQUENCES = [
   { id: 'seq-I', label: 'Sequence I', sub: 'General Performance', steps: 4 },
@@ -72,8 +73,9 @@ function VerdictBadge({ v }: { v: Verdict }) {
 }
 
 export function GuidedTestWizard() {
-  const { samples, addTestRun, currentUser } = useLIMS();
+  const { samples, equipment, addTestRun, currentUser } = useLIMS();
   const [selectedSampleId, setSelectedSampleId] = useState<string>(samples[1]?.id ?? '');
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>(equipment[0]?.id ?? '');
   const [selectedSeq, setSelectedSeq] = useState('seq-I');
   const [step, setStep] = useState(0); // 0=select, 1..N=form steps, N+1=results
   const [inputs, setInputs] = useState<Record<string, string>>({});
@@ -83,10 +85,12 @@ export function GuidedTestWizard() {
   const [aiDiagnosis, setAiDiagnosis] = useState<string[] | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [equipmentGuardError, setEquipmentGuardError] = useState<string | null>(null);
 
   const formulaEngine = new FormulaEngine();
   const sample = samples.find((s) => s.id === selectedSampleId);
   const spec = sample?.specification;
+  const targetEq = equipment.find((e) => e.id === selectedEquipmentId);
 
   const seqForms = FORM_SCHEMAS;
   const STEPS = seqForms.length + 2; // 0=setup, 1..4=forms, last=results
@@ -102,13 +106,24 @@ export function GuidedTestWizard() {
     return formulaEngine.evaluate(field.formulaRef, vars).toFixed(2);
   };
 
+  const handleStartWizard = () => {
+    if (targetEq) {
+      const guardResult = EquipmentGuard.validateForTestRun(targetEq);
+      if (!guardResult.valid) {
+        setEquipmentGuardError(guardResult.reason || 'Equipment calibration guard check failed.');
+        return;
+      }
+    }
+    setEquipmentGuardError(null);
+    setStep(1);
+  };
+
   const runEvaluation = () => {
     if (!spec) return;
     const numInputs: Record<string, number> = {};
     for (const [k, v] of Object.entries(inputs)) {
       const n = parseFloat(v);
       numInputs[k] = isNaN(n) ? 0 : n;
-      // Encode select values
       if (v === 'No' || v === 'No Trip (PASS)') numInputs[`${k}_num`] = 0;
       if (v === 'Yes' || v === 'Tripped (FAIL)') numInputs[`${k}_num`] = 1;
     }
@@ -122,15 +137,12 @@ export function GuidedTestWizard() {
     const ov = engine.overallVerdict(clauseResults);
     setVerdict(ov);
 
-    // Consistency check
     const checker = new ConsistencyChecker();
     setWarnings(checker.check(numInputs, spec));
 
-    // Summary
     const sg = new SummaryGenerator();
     setSummary(sg.generate(clauseResults, spec));
 
-    // AI diagnosis for failures
     const failed = clauseResults.filter((r) => r.verdict === 'FAIL');
     if (failed.length > 0 && spec) {
       const diagEngine = new DiagnosisEngine();
@@ -141,7 +153,6 @@ export function GuidedTestWizard() {
       setAiDiagnosis(null);
     }
 
-    // Save run
     const run: TestRun = {
       id: uuidv4(), sampleId: selectedSampleId, sequenceId: selectedSeq,
       startedAt: new Date().toISOString(), completedAt: new Date().toISOString(),
@@ -175,190 +186,174 @@ export function GuidedTestWizard() {
         </div>
       </div>
 
-      {/* Step 0: Setup */}
-      {step === 0 && (
-        <div className="card p-6 space-y-4">
-          <h2 className="text-base font-semibold text-surface-100">Test Setup</h2>
+      {/* Equipment Guard Error Alert */}
+      {equipmentGuardError && (
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-3 text-xs text-rose-300 animate-fade-in">
+          <ShieldAlert className="w-5 h-5 flex-shrink-0 text-rose-400" />
           <div>
-            <label className="label">Select Sample</label>
-            <select className="input" value={selectedSampleId} onChange={(e) => setSelectedSampleId(e.target.value)}>
-              {samples.map((s) => (
-                <option key={s.id} value={s.id}>{s.reportNo} — {s.specification.model} ({s.clientName})</option>
-              ))}
-            </select>
+            <p className="font-bold text-rose-200">Equipment Calibration Guard Rejected Test Launch</p>
+            <p className="text-rose-300 mt-0.5">{equipmentGuardError}</p>
           </div>
-          <div>
-            <label className="label">Select Sequence</label>
-            <div className="grid grid-cols-2 gap-3 mt-1">
-              {SEQUENCES.map((seq) => (
-                <button
-                  key={seq.id}
-                  onClick={() => setSelectedSeq(seq.id)}
-                  className={`p-3 rounded-lg border text-left transition-all ${selectedSeq === seq.id ? 'border-brand-500 bg-brand-600/10' : 'border-surface-700 bg-surface-800 hover:border-surface-600'}`}
-                >
-                  <p className="text-sm font-semibold text-surface-100">{seq.label}</p>
-                  <p className="text-xs text-surface-400 mt-0.5">{seq.sub}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-          {sample && (
-            <div className="bg-surface-800 rounded-lg p-3 grid grid-cols-3 gap-2 text-xs">
-              {[
-                ['In', `${sample.specification.ratedCurrent} A`],
-                ['Ue', `${sample.specification.ratedVoltage} V`],
-                ['Icu', `${sample.specification.shortCircuitUltimate} kA`],
-                ['Ics', `${sample.specification.shortCircuitService} kA`],
-                ['Poles', sample.specification.poles],
-                ['Category', sample.specification.category],
-              ].map(([k, v]) => (
-                <div key={k as string}>
-                  <span className="text-surface-500">{k}: </span>
-                  <span className="text-surface-100 font-medium">{v}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <button className="btn-primary w-full" onClick={() => setStep(1)}>
-            Begin Sequence {selectedSeq.toUpperCase()} <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
       )}
 
-      {/* Dynamic form steps */}
-      {step > 0 && step < STEPS - 1 && currentForm && (
-        <div className="card p-6 space-y-4 animate-fade-in">
-          <h2 className="text-base font-semibold text-surface-100">{currentForm.title}</h2>
+      {/* Step 0: Setup */}
+      {step === 0 && (
+        <div className="card p-6 space-y-4">
+          <p className="text-sm font-bold text-surface-100 mb-2">Select Test Sample & Test Station Equipment</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {currentForm.fields.map((field) => {
-              const hint = field.formulaRef && spec
-                ? `Formula: ${field.formulaRef} = ${evaluateForField(field.id, currentForm)}`
-                : undefined;
-              return (
-                <div key={field.id}>
-                  <label className="label">
-                    {field.label}
-                    {field.unit && <span className="text-brand-400 ml-1 normal-case font-normal">({field.unit})</span>}
-                    {field.required && <span className="text-danger-400 ml-1">*</span>}
-                  </label>
-                  {field.type === 'select' ? (
-                    <select
-                      className="input"
-                      value={inputs[field.id] ?? ''}
-                      onChange={(e) => handleInput(field.id, e.target.value)}
-                    >
-                      <option value="">— Select —</option>
-                      {field.options?.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  ) : (
-                    <input
-                      type={field.type}
-                      className="input"
-                      placeholder={hint ?? field.placeholder ?? ''}
-                      value={inputs[field.id] ?? ''}
-                      onChange={(e) => handleInput(field.id, e.target.value)}
-                    />
-                  )}
-                  {field.description && <p className="text-[11px] text-surface-500 mt-1">{field.description}</p>}
-                  {hint && <p className="text-[11px] text-brand-400/70 mt-1">{hint}</p>}
-                </div>
-              );
-            })}
+            <div>
+              <label className="block text-xs font-semibold text-surface-400 uppercase tracking-wide mb-1.5">Target Sample</label>
+              <select
+                value={selectedSampleId}
+                onChange={(e) => setSelectedSampleId(e.target.value)}
+                className="w-full bg-surface-800 border border-surface-700 rounded-xl px-3 py-2 text-xs text-surface-100 focus:outline-none focus:border-brand-500"
+              >
+                {samples.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.reportNo} ({s.specification.model}) — {s.lifecycleState}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-surface-400 uppercase tracking-wide mb-1.5">Assigned Test Equipment</label>
+              <select
+                value={selectedEquipmentId}
+                onChange={(e) => {
+                  setSelectedEquipmentId(e.target.value);
+                  setEquipmentGuardError(null);
+                }}
+                className="w-full bg-surface-800 border border-surface-700 rounded-xl px-3 py-2 text-xs text-surface-100 focus:outline-none focus:border-brand-500"
+              >
+                {equipment.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.assetTag} ({e.name}) — {e.status} (Cal Due: {e.nextCalibrationDue})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="flex gap-3 pt-2">
-            <button className="btn-secondary" onClick={() => setStep(step - 1)}>
-              <ChevronLeft className="w-4 h-4" /> Back
+
+          <div className="pt-4 flex justify-end">
+            <button
+              onClick={handleStartWizard}
+              className="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold shadow flex items-center gap-2 transition-all"
+            >
+              Start Sequence Evaluation <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Remaining Form Steps & Results */}
+      {step > 0 && step < STEPS - 1 && currentForm && (
+        <div className="card p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-surface-800 pb-3">
+            <h3 className="text-sm font-bold text-surface-100">{currentForm.title}</h3>
+            <span className="text-xs text-surface-400">Step: {currentForm.stepId}</span>
+          </div>
+
+          <div className="space-y-4">
+            {currentForm.fields.map((f) => (
+              <div key={f.id} className="space-y-1">
+                <label className="block text-xs font-medium text-surface-300">
+                  {f.label} {f.unit && <span className="text-surface-500">({f.unit})</span>}
+                </label>
+                {f.type === 'number' && (
+                  <input
+                    type="number"
+                    value={inputs[f.id] ?? ''}
+                    onChange={(e) => handleInput(f.id, e.target.value)}
+                    placeholder={f.formulaRef ? `Calculated formula: ${evaluateForField(f.id, currentForm)}` : ''}
+                    className="w-full bg-surface-800 border border-surface-700 rounded-xl px-3 py-2 text-xs text-surface-100 focus:outline-none focus:border-brand-500"
+                  />
+                )}
+                {f.type === 'select' && (
+                  <select
+                    value={inputs[f.id] ?? ''}
+                    onChange={(e) => handleInput(f.id, e.target.value)}
+                    className="w-full bg-surface-800 border border-surface-700 rounded-xl px-3 py-2 text-xs text-surface-100 focus:outline-none focus:border-brand-500"
+                  >
+                    <option value="">Select value...</option>
+                    {f.options?.map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-4 flex justify-between">
+            <button
+              onClick={() => setStep((s) => s - 1)}
+              className="px-4 py-2 bg-surface-800 text-surface-300 rounded-xl text-xs font-semibold hover:bg-surface-700"
+            >
+              Back
             </button>
             {isLastFormStep ? (
-              <button className="btn-primary flex-1" onClick={runEvaluation}>
-                <Zap className="w-4 h-4" /> Evaluate & Generate Results
+              <button
+                onClick={runEvaluation}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow"
+              >
+                Evaluate Sequence Results
               </button>
             ) : (
-              <button className="btn-primary flex-1" onClick={() => setStep(step + 1)}>
-                Next Step <ChevronRight className="w-4 h-4" />
+              <button
+                onClick={() => setStep((s) => s + 1)}
+                className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold"
+              >
+                Next Step
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Results */}
+      {/* Results View */}
       {step === STEPS - 1 && (
         <div className="space-y-4 animate-fade-in">
-          {/* Overall verdict */}
-          <div className={`card p-5 flex items-center gap-4 ${verdict === 'PASS' ? 'glow-success' : 'glow-danger'}`}>
-            {verdict === 'PASS'
-              ? <CheckCircle2 className="w-10 h-10 text-success-400" />
-              : <XCircle className="w-10 h-10 text-danger-400" />}
+          <div className="card p-6 flex items-center justify-between">
             <div>
-              <p className={`text-2xl font-black ${verdict === 'PASS' ? 'text-success-400' : 'text-danger-400'}`}>
-                {verdict === 'PASS' ? 'ALL CLAUSES PASSED' : 'TEST SEQUENCE FAILED'}
-              </p>
-              <p className="text-xs text-surface-400 mt-1">{summary}</p>
+              <p className="text-xs text-surface-400 uppercase tracking-wide font-bold">Overall Verdict</p>
+              <h2 className="text-xl font-bold text-surface-100 mt-1">{verdict}</h2>
             </div>
+            <VerdictBadge v={verdict} />
           </div>
 
-          {/* Consistency warnings */}
-          {warnings.length > 0 && (
-            <div className="card p-4 border-warning-600/30 bg-warning-600/5">
-              <p className="text-xs font-semibold text-warning-400 mb-2">⚠ Data Consistency Warnings</p>
-              {warnings.map((w, i) => <p key={i} className="text-xs text-warning-400/80">{w}</p>)}
-            </div>
-          )}
-
-          {/* Clause results table */}
-          <div className="card overflow-hidden">
-            <div className="p-4 border-b border-surface-800">
-              <p className="section-title">Clause-by-Clause Results</p>
-            </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-surface-800">
-                  {['Clause', 'Description', 'Verdict', 'Message'].map((h) => (
-                    <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-surface-500 uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-800/60">
-                {results.map((r) => (
-                  <tr key={r.clauseId + r.ruleId} className="hover:bg-surface-800/30">
-                    <td className="px-4 py-3 font-mono text-xs text-brand-400">{r.clauseId}</td>
-                    <td className="px-4 py-3 text-xs text-surface-300">{r.clauseTitle}</td>
-                    <td className="px-4 py-3"><VerdictBadge v={r.verdict} /></td>
-                    <td className="px-4 py-3 text-xs text-surface-400">{r.message}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* AI Diagnosis */}
-          {aiDiagnosis && (
-            <div className="card p-4 border-danger-600/20 bg-danger-600/5">
-              <div className="flex items-center gap-2 mb-3">
-                <Bot className="w-4 h-4 text-danger-400" />
-                <p className="text-sm font-semibold text-danger-400">AI Failure Diagnosis & Recommendations</p>
+          <div className="card p-6 space-y-3">
+            <p className="text-xs font-bold text-surface-400 uppercase">Clause Results</p>
+            {results.map((r) => (
+              <div key={r.ruleId} className="flex items-center justify-between p-3 bg-surface-900 rounded-xl border border-surface-800 text-xs">
+                <div>
+                  <p className="font-bold text-surface-100">Clause {r.clauseId}: {r.ruleId}</p>
+                  <p className="text-surface-400 mt-0.5">{r.message}</p>
+                </div>
+                <VerdictBadge v={r.verdict} />
               </div>
-              <pre className="text-xs text-surface-300 whitespace-pre-wrap font-mono leading-relaxed">
-                {aiDiagnosis.join('\n')}
-              </pre>
+            ))}
+          </div>
+
+          {showWaveform && (
+            <div className="card p-6">
+              <AdvancedOscillographViewer />
             </div>
           )}
 
-          {/* Show waveform button */}
-          {selectedSeq !== 'seq-I' && (
-            <button className="btn-secondary w-full" onClick={() => setShowWaveform((v) => !v)}>
-              <Zap className="w-4 h-4" /> {showWaveform ? 'Hide' : 'View'} Short-Circuit Oscillograph
+          <div className="flex justify-between">
+            <button
+              onClick={() => setShowWaveform((prev) => !prev)}
+              className="px-4 py-2 bg-surface-800 hover:bg-surface-700 text-surface-300 rounded-xl text-xs font-semibold"
+            >
+              {showWaveform ? 'Hide Waveform' : 'Show Telemetry Waveform'}
             </button>
-          )}
-          {showWaveform && <AdvancedOscillographViewer />}
-
-          <div className="flex gap-3">
-            <button className="btn-secondary" onClick={() => { setStep(0); setResults([]); setInputs({}); setSummary(null); setAiDiagnosis(null); }}>
-              <ChevronLeft className="w-4 h-4" /> New Test
-            </button>
-            <button className="btn-primary flex-1" onClick={() => window.print()}>
-              <FileText className="w-4 h-4" /> Print / Export Report
+            <button
+              onClick={() => setStep(0)}
+              className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold"
+            >
+              Complete & Reset Wizard
             </button>
           </div>
         </div>
