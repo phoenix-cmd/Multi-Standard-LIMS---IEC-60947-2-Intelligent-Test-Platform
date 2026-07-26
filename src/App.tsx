@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { LIMSProvider } from './context/LIMSContext';
 import { DesktopWorkspaceProvider, useDesktopWorkspace } from './desktop/DesktopWorkspaceContext';
 import { ContextMenuProvider } from './desktop/ContextMenuProvider';
@@ -12,6 +13,7 @@ import { PropertyInspector } from './components/ui/PropertyInspector';
 import { NotificationCenter } from './components/ui/NotificationCenter';
 import { KeyboardShortcutsModal } from './components/ui/KeyboardShortcutsModal';
 
+import { LoginPage } from './components/auth/LoginPage';
 import { OperationsDashboard } from './components/dashboard/OperationsDashboard';
 import { QualityDashboard } from './components/dashboard/QualityDashboard';
 import { SampleRegistry } from './components/samples/SampleRegistry';
@@ -68,8 +70,27 @@ function Placeholder({ label }: { label: string }) {
 
 function ConditionalAICopilotDrawer() {
   const location = useLocation();
-  if (location.pathname === '/engineering') return null;
+  if (location.pathname === '/engineering' || location.pathname === '/login') return null;
   return <AICopilotDrawer />;
+}
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-surface-950 flex flex-col items-center justify-center text-surface-200">
+        <div className="w-10 h-10 border-4 border-brand-500/30 border-t-brand-500 rounded-full animate-spin mb-4" />
+        <p className="font-mono text-sm">Authenticating Engineering OS Session...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
 }
 
 function DesktopShell() {
@@ -77,14 +98,11 @@ function DesktopShell() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-surface-950">
-      {/* Top Tab Bar */}
       <DesktopTabBar />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar (hidden in focus mode) */}
         {!focusMode && <Sidebar />}
 
-        {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
           <Routes>
             <Route path="/" element={<Page path="/"><OperationsDashboard /></Page>} />
@@ -111,10 +129,8 @@ function DesktopShell() {
         </div>
       </div>
 
-      {/* Persistent Status Bar */}
       <DesktopStatusBar />
 
-      {/* Overlays & Drawers */}
       <CommandPalette />
       <PropertyInspector />
       <NotificationCenter />
@@ -127,13 +143,22 @@ function DesktopShell() {
 export default function App() {
   return (
     <BrowserRouter>
-      <LIMSProvider>
-        <DesktopWorkspaceProvider>
-          <ContextMenuProvider>
-            <DesktopShell />
-          </ContextMenuProvider>
-        </DesktopWorkspaceProvider>
-      </LIMSProvider>
+      <AuthProvider>
+        <LIMSProvider>
+          <DesktopWorkspaceProvider>
+            <ContextMenuProvider>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/*" element={
+                  <ProtectedRoute>
+                    <DesktopShell />
+                  </ProtectedRoute>
+                } />
+              </Routes>
+            </ContextMenuProvider>
+          </DesktopWorkspaceProvider>
+        </LIMSProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
