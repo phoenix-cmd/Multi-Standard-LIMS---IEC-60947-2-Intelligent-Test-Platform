@@ -3,11 +3,11 @@ import type { WaveformSnapshot, WaveformChannel } from '../../types';
 import { StreamSimulator } from '../../engine/drivers/StreamSimulator';
 import {
   ZoomIn, ZoomOut, RefreshCw, Crosshair, Activity, BarChart2,
-  Upload, FileText, AlertCircle, CheckCircle2
+  Upload, FileText, AlertCircle, CheckCircle2, Sliders, Zap
 } from 'lucide-react';
 import { WaveformParser } from '../../kernel/waveform/Parser';
 import { AnalysisEngine, type WaveformAnalysisResult } from '../../kernel/waveform/AnalysisEngine';
-import { WaveformExporter } from '../../kernel/waveform/Exporter';
+import { FilterEngine } from '../../kernel/waveform/FilterEngine';
 
 interface OscillographProps {
   snapshot?: WaveformSnapshot;
@@ -20,10 +20,11 @@ export function AdvancedOscillographViewer({ snapshot, title = 'Oscillograph —
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [zoom, setZoom] = useState(1);
-  const [offset, setOffset] = useState(0);          // sample offset
+  const [offset, setOffset] = useState(0);
   const [cursor1, setCursor1] = useState<number | null>(null);
   const [cursor2, setCursor2] = useState<number | null>(null);
   const [hoveredX, setHoveredX] = useState<number | null>(null);
+  const [applyFilter, setApplyFilter] = useState(false);
   const [activeChannels, setActiveChannels] = useState<Set<string>>(
     new Set(data.channels.map((c) => c.id))
   );
@@ -59,7 +60,6 @@ export function AdvancedOscillographViewer({ snapshot, title = 'Oscillograph —
 
         setFileError(null);
 
-        // Convert to snapshot
         const newSnapshot: WaveformSnapshot = {
           eventId: `evt-${Date.now().toString().slice(-4)}`,
           sampleRate: 10000,
@@ -108,7 +108,6 @@ export function AdvancedOscillographViewer({ snapshot, title = 'Oscillograph —
     ctx.fillStyle = '#0a1020';
     ctx.fillRect(0, 0, W, H);
 
-    // Grid
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 0.5;
     for (let x = 0; x < W; x += W / 10) {
@@ -122,28 +121,32 @@ export function AdvancedOscillographViewer({ snapshot, title = 'Oscillograph —
       ctx.strokeStyle = '#1e293b';
     }
 
-    // Draw each channel
     visibleChannels.forEach((ch, chIdx) => {
       const startSample = Math.floor(offset);
       const endSample = Math.min(startSample + visibleSamples, ch.data.length);
-      const slice = ch.data.slice(startSample, endSample);
+      let rawSlice = ch.data.slice(startSample, endSample);
+
+      if (applyFilter) {
+        rawSlice = FilterEngine.lowPassFilter(rawSlice, 0.3);
+      }
+
       const yBase = chIdx * channelH;
       const yCenter = yBase + channelH / 2;
 
-      const max = Math.max(...slice.map(Math.abs), 1e-9);
+      const max = Math.max(...rawSlice.map(Math.abs), 1e-9);
       const scale = (channelH / 2) * 0.85 / max;
 
       ctx.fillStyle = ch.color;
       ctx.font = '10px JetBrains Mono, monospace';
-      ctx.fillText(ch.label, 8, yBase + 14);
+      ctx.fillText(ch.label + (applyFilter ? ' (Filtered)' : ''), 8, yBase + 14);
 
       ctx.strokeStyle = ch.color;
       ctx.lineWidth = 1.5;
       ctx.shadowColor = ch.color;
       ctx.shadowBlur = 3;
       ctx.beginPath();
-      slice.forEach((v, i) => {
-        const x = (i / (slice.length - 1)) * W;
+      rawSlice.forEach((v, i) => {
+        const x = (i / (rawSlice.length - 1)) * W;
         const y = yCenter - v * scale;
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       });
@@ -151,9 +154,9 @@ export function AdvancedOscillographViewer({ snapshot, title = 'Oscillograph —
       ctx.shadowBlur = 0;
 
       if (hoveredX !== null) {
-        const idx = Math.floor((hoveredX / W) * slice.length);
-        if (idx >= 0 && idx < slice.length) {
-          const val = slice[idx];
+        const idx = Math.floor((hoveredX / W) * rawSlice.length);
+        if (idx >= 0 && idx < rawSlice.length) {
+          const val = rawSlice[idx];
           ctx.fillStyle = ch.color;
           ctx.font = 'bold 9px JetBrains Mono, monospace';
           ctx.fillText(`${val.toFixed(3)} ${ch.unit}`, W - 100, yBase + 14);
@@ -161,7 +164,6 @@ export function AdvancedOscillographViewer({ snapshot, title = 'Oscillograph —
       }
     });
 
-    // Draw C1 cursor
     if (cursor1 !== null) {
       ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 1;
@@ -170,7 +172,6 @@ export function AdvancedOscillographViewer({ snapshot, title = 'Oscillograph —
       ctx.setLineDash([]);
     }
 
-    // Draw C2 cursor
     if (cursor2 !== null) {
       ctx.strokeStyle = '#10b981';
       ctx.lineWidth = 1;
@@ -178,7 +179,7 @@ export function AdvancedOscillographViewer({ snapshot, title = 'Oscillograph —
       ctx.beginPath(); ctx.moveTo(cursor2, 0); ctx.lineTo(cursor2, H); ctx.stroke();
       ctx.setLineDash([]);
     }
-  }, [data, activeChannels, offset, visibleSamples, hoveredX, cursor1, cursor2]);
+  }, [data, activeChannels, offset, visibleSamples, hoveredX, cursor1, cursor2, applyFilter]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -192,6 +193,16 @@ export function AdvancedOscillographViewer({ snapshot, title = 'Oscillograph —
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setApplyFilter((prev) => !prev)}
+            className={`px-2.5 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition-colors border ${
+              applyFilter
+                ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                : 'bg-surface-800 text-surface-400 border-surface-700 hover:text-surface-200'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5" /> Filter Noise
+          </button>
           <input
             type="file"
             ref={fileInputRef}
@@ -229,7 +240,7 @@ export function AdvancedOscillographViewer({ snapshot, title = 'Oscillograph —
 
       {/* Analysis Metrics Badge Bar */}
       {analysisResult?.metrics && (
-        <div className="grid grid-cols-4 gap-2 bg-surface-900 border border-surface-800 p-3 rounded-xl text-xs">
+        <div className="grid grid-cols-5 gap-2 bg-surface-900 border border-surface-800 p-3 rounded-xl text-xs">
           <div>
             <span className="text-[10px] text-surface-500 uppercase tracking-wide block">Peak Current (I_peak)</span>
             <span className="font-mono font-bold text-brand-400">{analysisResult.metrics.peakCurrentA} A</span>
@@ -241,6 +252,10 @@ export function AdvancedOscillographViewer({ snapshot, title = 'Oscillograph —
           <div>
             <span className="text-[10px] text-surface-500 uppercase tracking-wide block">Arc Energy (E_arc)</span>
             <span className="font-mono font-bold text-purple-400">{analysisResult.metrics.arcEnergyJ} J</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-surface-500 uppercase tracking-wide block">FFT THD %</span>
+            <span className="font-mono font-bold text-cyan-400">{analysisResult.fft.totalHarmonicDistortionTHD}%</span>
           </div>
           <div>
             <span className="text-[10px] text-surface-500 uppercase tracking-wide block">Compliance Verdict</span>
