@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, Activity, CheckCircle } from 'lucide-react';
+import { Shield, Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, Activity, CheckCircle, Server, WifiOff } from 'lucide-react';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, isBackendOffline } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('priya.sharma@lab.in');
@@ -30,9 +30,20 @@ export function LoginPage() {
     }
   };
 
-  const handleQuickLogin = (demoEmail: string, demoPass: string) => {
+  const handleQuickLogin = async (demoEmail: string, demoPass: string) => {
     setEmail(demoEmail);
     setPassword(demoPass);
+    setError(null);
+    setLoading(true);
+    try {
+      await login(demoEmail, demoPass);
+      navigate('/');
+    } catch (err: unknown) {
+      const error = err as Error;
+      setError(error.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -52,10 +63,18 @@ export function LoginPage() {
             <span className="text-xs text-brand-400 font-mono tracking-widest uppercase">Multi-Standard IEC 60947-2 Platform</span>
           </div>
         </div>
-        <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-surface-400 bg-surface-900/80 px-3 py-1.5 rounded-full border border-surface-800">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          Enterprise OS Kernel v1.0 • Secure Auth
-        </div>
+        
+        {isBackendOffline ? (
+          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/30">
+            <WifiOff className="w-3.5 h-3.5" />
+            Backend Offline (Running Offline Demo Mode)
+          </div>
+        ) : (
+          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/30">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Backend API Online (http://localhost:5000)
+          </div>
+        )}
       </header>
 
       {/* Main Login Card Container */}
@@ -74,8 +93,8 @@ export function LoginPage() {
             <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3 text-rose-300 text-sm">
               <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold">Authentication Failed</p>
-                <p className="text-xs text-rose-400/90 mt-0.5">{error}</p>
+                <p className="font-semibold">Authentication Notice</p>
+                <p className="text-xs text-rose-300/90 mt-0.5">{error}</p>
               </div>
             </div>
           )}
@@ -164,14 +183,19 @@ export function LoginPage() {
 
           {/* Quick Login Shortcuts for Demo/Evaluation */}
           <div className="mt-8 pt-6 border-t border-surface-800">
-            <span className="block text-xs font-mono text-surface-400 uppercase tracking-widest text-center mb-3">
-              Quick Role Login Shortcuts
-            </span>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-mono text-surface-400 uppercase tracking-widest">
+                One-Click Quick Login Shortcuts
+              </span>
+              <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                <Server className="w-3 h-3" /> Auto-Auth
+              </span>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickLogin('priya.sharma@lab.in', 'Password123!')}
-                className="p-2 bg-surface-950 hover:bg-surface-800 border border-surface-800 rounded-lg text-left transition-all group"
+                className="p-2.5 bg-surface-950 hover:bg-surface-800 border border-surface-800 rounded-xl text-left transition-all group"
               >
                 <p className="text-xs font-bold text-surface-200 group-hover:text-brand-400">Priya Sharma</p>
                 <p className="text-[10px] text-surface-400 font-mono">Lead Engineer</p>
@@ -179,7 +203,7 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={() => handleQuickLogin('arjun.menon@lab.in', 'Admin@123456!')}
-                className="p-2 bg-surface-950 hover:bg-surface-800 border border-surface-800 rounded-lg text-left transition-all group"
+                className="p-2.5 bg-surface-950 hover:bg-surface-800 border border-surface-800 rounded-xl text-left transition-all group"
               >
                 <p className="text-xs font-bold text-surface-200 group-hover:text-amber-400">Dr. Arjun Menon</p>
                 <p className="text-[10px] text-surface-400 font-mono">Lab Director (Admin)</p>
@@ -187,7 +211,7 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={() => handleQuickLogin('rahul.verma@lab.in', 'Password123!')}
-                className="p-2 bg-surface-950 hover:bg-surface-800 border border-surface-800 rounded-lg text-left transition-all group"
+                className="p-2.5 bg-surface-950 hover:bg-surface-800 border border-surface-800 rounded-lg text-left transition-all group"
               >
                 <p className="text-xs font-bold text-surface-200 group-hover:text-emerald-400">Rahul Verma</p>
                 <p className="text-[10px] text-surface-400 font-mono">Technician</p>
@@ -195,7 +219,7 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={() => handleQuickLogin('sunita@lab.in', 'Password123!')}
-                className="p-2 bg-surface-950 hover:bg-surface-800 border border-surface-800 rounded-lg text-left transition-all group"
+                className="p-2.5 bg-surface-950 hover:bg-surface-800 border border-surface-800 rounded-lg text-left transition-all group"
               >
                 <p className="text-xs font-bold text-surface-200 group-hover:text-purple-400">Sunita Krishnan</p>
                 <p className="text-[10px] text-surface-400 font-mono">Quality Inspector</p>
