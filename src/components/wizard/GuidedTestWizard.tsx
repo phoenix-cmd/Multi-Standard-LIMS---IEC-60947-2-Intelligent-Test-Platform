@@ -14,54 +14,20 @@ import { v4 as uuidv4 } from 'uuid';
 import { AdvancedOscillographViewer } from '../oscillograph/AdvancedOscillographViewer';
 import { EquipmentGuard } from '../../platform/equipment/domain/EquipmentGuard';
 
+import { IEC60947_2_2003_RULE_CATALOG } from '../../standards/plugins/IEC60947_2_Plugin';
+import { StandardRuleEngine } from '../../standards/api/StandardRuleEngine';
+
 const SEQUENCES = [
-  { id: 'seq-I', label: 'Sequence I', sub: 'General Performance', steps: 4 },
+  { id: 'seq-I', label: 'Sequence I', sub: 'General Performance (IS/IEC 60947-2:2003)', steps: 4 },
   { id: 'seq-II', label: 'Sequence II', sub: 'Ics — Service Short-Circuit', steps: 3 },
   { id: 'seq-III', label: 'Sequence III', sub: 'Icu — Ultimate Short-Circuit', steps: 3 },
   { id: 'seq-IV', label: 'Sequence IV', sub: 'Icw — Short-Time Withstand', steps: 2 },
 ];
 
-const RULES = [
-  {
-    id: 'r1', clauseId: '8.3.3.1', label: 'Temperature Rise — Terminals',
-    expression: 'dT_terminal_R <= 70 AND dT_terminal_S <= 70 AND dT_terminal_T <= 70',
-    conditions: [], severity: 'critical' as const,
-    failMessage: 'One or more terminal temperature rises exceed 70 K limit (IEC 60947-2 Cl. 8.3.3.1).',
-    passMessage: 'All terminal temperature rises ≤ 70 K. PASS.',
-  },
-  {
-    id: 'r2', clauseId: '8.3.3.1', label: 'Temperature Rise — Handle',
-    expression: 'dT_handle <= 35',
-    conditions: [], severity: 'major' as const,
-    failMessage: 'Operating handle temperature rise exceeds 35 K limit (Cl. 8.3.3.1).',
-    passMessage: 'Handle temperature rise ≤ 35 K. PASS.',
-  },
-  {
-    id: 'r3', clauseId: '8.3.3.2', label: 'Dielectric Withstand',
-    expression: 'flashover_num == 0 AND leakage_current < 5',
-    conditions: [], severity: 'critical' as const,
-    failMessage: 'Dielectric test failed — flashover/puncture detected or leakage > 5 mA (Cl. 8.3.3.2).',
-    passMessage: 'No flashover/puncture. Leakage within limit. PASS.',
-  },
-  {
-    id: 'r4', clauseId: '8.3.3.3', label: 'No-Trip at 1.05×In',
-    expression: 'tripOccurred_105_num == 0',
-    conditions: [], severity: 'critical' as const,
-    failMessage: 'Device tripped at 1.05×In — should NOT trip (Cl. 8.3.3.3).',
-    passMessage: 'No trip at 1.05×In. Correct behaviour. PASS.',
-  },
-  {
-    id: 'r5', clauseId: '8.3.3.3', label: 'Trip at 1.30×In within limit',
-    expression: 'tripTime_130 <= tripLimit_max',
-    conditions: [], severity: 'critical' as const,
-    failMessage: 'Trip time at 1.30×In exceeds the maximum allowed limit (Cl. 8.3.3.3).',
-    passMessage: 'Trip at 1.30×In within limit band. PASS.',
-  },
-];
-
 const FORMULAS = [
-  { id: 'I_105_calc', expression: '1.05 * In', unit: 'A' },
-  { id: 'I_130_calc', expression: '1.30 * In', unit: 'A' },
+  { id: 'I_120_calc', expression: '1.20 * In', unit: 'A' },
+  { id: 'I_110_calc', expression: '1.10 * In', unit: 'A' },
+  { id: 'I_145_calc', expression: '1.45 * In', unit: 'A' },
   { id: 'Utest', expression: '2 * Ui + 1000', unit: 'V' },
 ];
 
@@ -120,25 +86,31 @@ export function GuidedTestWizard() {
 
   const runEvaluation = () => {
     if (!spec) return;
-    const numInputs: Record<string, number> = {};
+    const numInputs: Record<string, number | string | boolean> = {};
     for (const [k, v] of Object.entries(inputs)) {
-      const n = parseFloat(v);
-      numInputs[k] = isNaN(n) ? 0 : n;
-      if (v === 'No' || v === 'No Trip (PASS)') numInputs[`${k}_num`] = 0;
-      if (v === 'Yes' || v === 'Tripped (FAIL)') numInputs[`${k}_num`] = 1;
+      if (v === 'Yes' || v === 'Tripped (FAIL)') {
+        numInputs[k] = true;
+      } else if (v === 'No' || v === 'No Trip (PASS)') {
+        numInputs[k] = false;
+      } else {
+        const n = parseFloat(v);
+        numInputs[k] = isNaN(n) ? v : n;
+      }
     }
     numInputs['In'] = spec.ratedCurrent;
     numInputs['Ui'] = spec.insulationVoltage;
     numInputs['Ue'] = spec.ratedVoltage;
 
-    const engine = new RuleEngine();
-    const clauseResults = engine.evaluateAll(RULES, numInputs, FORMULAS);
+    const stdEngine = new StandardRuleEngine();
+    const clauseResults = Object.values(IEC60947_2_2003_RULE_CATALOG).map((cfg) =>
+      stdEngine.evaluateDeclarativeRule(cfg, numInputs)
+    );
     setResults(clauseResults);
-    const ov = engine.overallVerdict(clauseResults);
+    const ov: Verdict = clauseResults.some((r) => r.verdict === 'FAIL') ? 'FAIL' : 'PASS';
     setVerdict(ov);
 
     const checker = new ConsistencyChecker();
-    setWarnings(checker.check(numInputs, spec));
+    setWarnings(checker.check(numInputs as Record<string, number>, spec));
 
     const sg = new SummaryGenerator();
     setSummary(sg.generate(clauseResults, spec));
@@ -156,7 +128,7 @@ export function GuidedTestWizard() {
     const run: TestRun = {
       id: uuidv4(), sampleId: selectedSampleId, sequenceId: selectedSeq,
       startedAt: new Date().toISOString(), completedAt: new Date().toISOString(),
-      executedBy: currentUser.name, verdict: ov, inputs: numInputs,
+      executedBy: currentUser.name, verdict: ov, inputs: numInputs as Record<string, number>,
       clauseResults,
       waveformData: selectedSeq !== 'seq-I' ? StreamSimulator.generateShortCircuitSnapshot(spec?.shortCircuitUltimate ?? 50) : undefined,
       replayLog: [],
@@ -176,7 +148,7 @@ export function GuidedTestWizard() {
       <div className="card p-4">
         <div className="flex items-center gap-2 mb-3">
           <FlaskConical className="w-4 h-4 text-brand-400" />
-          <span className="text-sm font-semibold text-surface-100">Guided Test Wizard — IEC 60947-2</span>
+          <span className="text-sm font-semibold text-surface-100">Guided Test Wizard — IS/IEC 60947-2:2003</span>
           <span className="ml-auto text-xs text-surface-500">Step {step + 1} of {STEPS}</span>
         </div>
         <div className="flex gap-1">
@@ -317,21 +289,28 @@ export function GuidedTestWizard() {
         <div className="space-y-4 animate-fade-in">
           <div className="card p-6 flex items-center justify-between">
             <div>
-              <p className="text-xs text-surface-400 uppercase tracking-wide font-bold">Overall Verdict</p>
+              <p className="text-xs text-surface-400 uppercase tracking-wide font-bold">Overall Verdict (IS/IEC 60947-2:2003)</p>
               <h2 className="text-xl font-bold text-surface-100 mt-1">{verdict}</h2>
             </div>
             <VerdictBadge v={verdict} />
           </div>
 
           <div className="card p-6 space-y-3">
-            <p className="text-xs font-bold text-surface-400 uppercase">Clause Results</p>
+            <p className="text-xs font-bold text-surface-400 uppercase">Clause Results & Evidence</p>
             {results.map((r) => (
-              <div key={r.ruleId} className="flex items-center justify-between p-3 bg-surface-900 rounded-xl border border-surface-800 text-xs">
-                <div>
-                  <p className="font-bold text-surface-100">Clause {r.clauseId}: {r.ruleId}</p>
-                  <p className="text-surface-400 mt-0.5">{r.message}</p>
+              <div key={r.ruleId} className="p-3 bg-surface-900 rounded-xl border border-surface-800 text-xs space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-surface-100">Clause {r.clauseId} — {r.clauseTitle}</span>
+                  <VerdictBadge v={r.verdict} />
                 </div>
-                <VerdictBadge v={r.verdict} />
+                {r.explanation && <p className="text-surface-300 text-xs font-medium">{r.explanation}</p>}
+                {r.evidence && (
+                  <div className="text-[11px] text-surface-400 flex flex-wrap gap-x-4 gap-y-1 bg-surface-950/50 p-2 rounded-lg border border-surface-800/50">
+                    <span><strong>Measured:</strong> {String(r.evidence.measuredValue)} {r.evidence.unit}</span>
+                    <span><strong>Limit:</strong> {String(r.evidence.expectedLimit)} {r.evidence.unit}</span>
+                    <span><strong>Standard Edition:</strong> {r.evidence.standardEdition}</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>

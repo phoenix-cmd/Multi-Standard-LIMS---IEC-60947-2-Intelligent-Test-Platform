@@ -1,11 +1,11 @@
-import type { ClauseDefinition, FormulaDefinition, RuleDefinition } from '../../types';
+import type { ClauseDefinition, ClauseResult, FormulaDefinition, RuleDefinition } from '../../types';
 
 export interface StandardPluginMetadata {
   id: string;
   name: string;
   scope: string;
   revision: string;
-  organization: 'IEC' | 'UL' | 'IS' | 'EN';
+  organization: 'IEC' | 'UL' | 'IS' | 'EN' | 'BIS' | 'BIS / IEC' | 'IS/IEC';
   publishedYear: number;
 }
 
@@ -15,5 +15,5 @@ export interface StandardPlugin {
   formulas: FormulaDefinition[];
   rules: RuleDefinition[];
   defaultWorkflowDSL: string;
-  evaluateRule(ruleId: string, measuredValues: Record<string, number>): { verdict: 'PASS' | 'FAIL'; message: string };
+  evaluateRule(ruleId: string, measuredValues: Record<string, number | string | boolean>): ClauseResult;
 }

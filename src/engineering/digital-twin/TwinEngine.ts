@@ -20,13 +20,21 @@ function makeInitialState(): Record<string, ComponentState> {
   return state;
 }
 
-// ── Clause → Component linkage map ───────────────────────────────────────────
+// ── Clause → Component linkage map (IS/IEC 60947-2:2003) ──────────────────────
 const CLAUSE_COMPONENT_MAP: Record<string, string[]> = {
-  '8.3.3.1': ['terminalR', 'terminalS', 'terminalT', 'loadTerminalR', 'loadTerminalS', 'loadTerminalT', 'thermalElement', 'handle'],
-  '8.3.3.2': ['casing', 'arcChute', 'terminalR', 'terminalS', 'terminalT'],
-  '8.3.3.3': ['thermalElement', 'magneticRelease', 'tripUnit', 'mainContacts', 'operatingMechanism'],
-  '8.3.4':   ['mainContacts', 'arcChute', 'operatingMechanism', 'magneticRelease'],
-  '8.3.5':   ['mainContacts', 'arcChute', 'tripUnit', 'magneticRelease'],
+  '8.3.3.1':   ['thermalElement', 'magneticRelease', 'tripUnit', 'operatingMechanism'],
+  '8.3.3.1.2': ['magneticRelease', 'tripUnit', 'mainContacts'],
+  '8.3.3.1.3a':['thermalElement', 'tripUnit'],
+  '8.3.3.2':   ['casing', 'arcChute', 'terminalR', 'terminalS', 'terminalT'],
+  '8.3.3.3':   ['operatingMechanism', 'undervoltageRelease', 'shuntRelease', 'mainContacts'],
+  '8.3.3.4':   ['mainContacts', 'arcChute', 'thermalElement', 'magneticRelease'],
+  '8.3.3.5':   ['casing', 'arcChute', 'terminalR', 'terminalS', 'terminalT'],
+  '8.3.3.6':   ['terminalR', 'terminalS', 'terminalT', 'loadTerminalR', 'loadTerminalS', 'loadTerminalT', 'handle'],
+  '8.3.3.7':   ['thermalElement', 'tripUnit', 'operatingMechanism'],
+  '8.3.3.8':   ['undervoltageRelease', 'shuntRelease', 'operatingMechanism'],
+  '8.3.3.9':   ['handle', 'mainContacts'],
+  '8.3.4':     ['mainContacts', 'arcChute', 'operatingMechanism', 'magneticRelease'],
+  '8.3.5':     ['mainContacts', 'arcChute', 'tripUnit', 'magneticRelease'],
 };
 
 export class TwinEngine {

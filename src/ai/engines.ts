@@ -4,8 +4,8 @@ export class DiagnosisEngine {
   diagnose(failedResults: ClauseResult[], spec: MCCBSpecification): DiagnosisResult {
     const clauseIds = failedResults.map((r) => r.clauseId);
 
-    // Temperature-rise failure
-    if (clauseIds.includes('8.3.3.1')) {
+    // Temperature-rise failure (8.3.3.6)
+    if (clauseIds.includes('8.3.3.6')) {
       return {
         failureMechanism: 'Excessive Terminal Temperature Rise',
         rootCauses: [
@@ -18,7 +18,7 @@ export class DiagnosisEngine {
         correctives: [
           'Verify and re-torque terminal connections to manufacturer specification (typically 4–6 N·m for 250A frame)',
           'Re-calibrate bimetal trip element using certified calibration current source',
-          'Verify test conductor cross-section matches IEC 60947-2 Table D.1 for rated current',
+          'Verify test conductor cross-section matches IS/IEC 60947-2 Table D.1 for rated current',
           'Re-run test at ambient temperature <35°C or apply ambient correction factor',
         ],
         preventives: [
@@ -26,12 +26,12 @@ export class DiagnosisEngine {
           'Implement pre-test conductor resistance check (< 5 mΩ per terminal)',
           'Maintain lab ambient at 20°C ± 5°C during all temperature-rise tests',
         ],
-        clauseContext: 'IEC 60947-2 Clause 8.3.3.1 limits terminal temperature rise to ≤ 70 K above ambient.',
+        clauseContext: 'IS/IEC 60947-2:2003 Clause 8.3.3.6 limits terminal temperature rise to <= 70 K above ambient.',
       };
     }
 
-    // Dielectric failure
-    if (clauseIds.includes('8.3.3.2')) {
+    // Dielectric failure (8.3.3.2 / 8.3.3.5)
+    if (clauseIds.includes('8.3.3.2') || clauseIds.includes('8.3.3.5')) {
       return {
         failureMechanism: 'Dielectric Insulation Breakdown',
         rootCauses: [
@@ -52,12 +52,12 @@ export class DiagnosisEngine {
           'Maintain lab humidity below 75% RH; use desiccant storage for samples',
           'Photograph arc chute before and after each high-current test sequence',
         ],
-        clauseContext: 'IEC 60947-2 Clause 8.3.3.2 — Dielectric test voltage: 2500 V (1 min) with no flashover/puncture permitted.',
+        clauseContext: 'IS/IEC 60947-2:2003 Clause 8.3.3.2 — Leakage current <= 0.5 mA at 1.1 Ue for isolation; 2Ui+1000V AC 60s withstand.',
       };
     }
 
-    // Tripping characteristic failure
-    if (clauseIds.includes('8.3.3.3')) {
+    // Tripping limits failure (8.3.3.1.2 / 8.3.3.1.3 / 8.3.3.7)
+    if (clauseIds.some((id) => id.startsWith('8.3.3.1') || id === '8.3.3.7')) {
       return {
         failureMechanism: 'Tripping Characteristic Out of Tolerance',
         rootCauses: [
@@ -69,7 +69,7 @@ export class DiagnosisEngine {
         riskLevel: 'Critical' as 'Critical',
         correctives: [
           'Recalibrate electronic trip unit using certified primary injection test set',
-          'Replace bimetal element assembly if trip time deviation exceeds ±20% at 1.3 × In',
+          'Replace bimetal element assembly if trip time deviation exceeds ±20% at 1.10x / 1.45x Ir',
           'Measure and correct control circuit supply voltage stability',
           'Check and replace dashpot fluid if operating temperature range exceeded',
         ],
@@ -78,11 +78,11 @@ export class DiagnosisEngine {
           'Functional tripping verification (50% sample audit) before shipment',
           'Track bimetal element part numbers and implement life-limit replacement schedule',
         ],
-        clauseContext: `IEC 60947-2 Clause 8.3.3.3 — Must not trip at 1.05×In; must trip within specified time at 1.30×In. Rated current: ${spec.ratedCurrent} A.`,
+        clauseContext: `IS/IEC 60947-2:2003 Clause 8.3.3.1 — 80% non-trip / 120% trip short-circuit; 90% non-trip / 110% trip overload; 1.45 Ir post thermal test. Rated current: ${spec.ratedCurrent} A.`,
       };
     }
 
-    // Short-circuit failure
+    // Default short-circuit failure
     return {
       failureMechanism: 'Short-Circuit Breaking Capacity Non-Compliance',
       rootCauses: [
@@ -95,15 +95,15 @@ export class DiagnosisEngine {
       correctives: [
         'Replace contact material grade — evaluate AgW (Silver-Tungsten) for higher arc erosion resistance',
         'Inspect, clean and re-align arc chute deionizing plates',
-        'Verify and adjust magnetic instantaneous trip setpoint (II) to < 10 × In',
-        'Recalculate and adjust test circuit impedance to achieve required Ip = Icu × √2 × κ',
+        'Verify and adjust magnetic instantaneous trip setpoint (II) to < 10 x In',
+        'Recalculate and adjust test circuit impedance to achieve required Ip = Icu x √2 x κ',
       ],
       preventives: [
         'Conduct arc chute plate gap measurement after each short-circuit sequence',
         'Calibrate magnetic trip element annually',
         'Maintain certified test circuit impedance verification records',
       ],
-      clauseContext: `IEC 60947-2 Clause 8.3.4 — Ultimate breaking capacity Icu = ${spec.shortCircuitUltimate} kA at Ue = ${spec.ratedVoltage} V.`,
+      clauseContext: `IS/IEC 60947-2 Clause 8.3.4 — Ultimate breaking capacity Icu = ${spec.shortCircuitUltimate} kA at Ue = ${spec.ratedVoltage} V.`,
     };
   }
 }
@@ -151,7 +151,7 @@ export class SummaryGenerator {
       `Overall verdict: ${overall}. ` +
       (fail > 0
         ? `Immediate corrective action required for ${fail} failing clause(s). Refer to AI Diagnosis panel.`
-        : 'Device meets all evaluated IEC 60947-2 requirements for the tested sequences.');
+        : 'Device meets all evaluated IS/IEC 60947-2:2003 requirements for the tested sequences.');
   }
 }
 
@@ -159,17 +159,29 @@ export class ClauseExplainer {
   explain(clauseId: string, inputs: Record<string, number>): string {
     const explanations: Record<string, (i: Record<string, number>) => string> = {
       '8.3.3.1': (i) =>
-        `Clause 8.3.3.1 (Temperature Rise): The MCCB terminals must not exceed 70 K rise above ambient when carrying rated current (${i['In'] ?? '?'} A) for ≥1 hour. Accessible parts must not exceed 25 K (metal) / 35 K (insulated). Measured: ${i['dT_terminal'] ?? '?'} K.`,
+        `IS/IEC 60947-2:2003 Clause 8.3.3.1 (Tripping Limits & Characteristics): Verifies short-circuit releases at 80% (no trip) and 120% (trip <= 0.2s), overload releases at 90% (no trip) and 110% (trip <= 0.2s), neutral pole at 1.32x Ir, and definite time-delay limits. Rated In: ${i['In'] ?? '?'} A.`,
+      '8.3.3.1.2': () =>
+        `IS/IEC 60947-2:2003 Clause 8.3.3.1.2 (Opening under short-circuit conditions): Release must NOT operate at 80% Ir_sc for >= 0.2s (inst) or 2x delay (def time). Release MUST operate at 120% Ir_sc within 0.2s (inst) or 2x delay (def time).`,
+      '8.3.3.1.3a': () =>
+        `IS/IEC 60947-2:2003 Clause 8.3.3.1.3a (Opening under overload conditions): Release must NOT operate at 90% Ir_ol; release MUST operate at 110% Ir_ol. Neutral pole test current is 1.2 x 110% = 1.32 Ir_ol.`,
       '8.3.3.2': (i) =>
-        `Clause 8.3.3.2 (Dielectric Withstand): After all short-circuit sequences, the MCCB must withstand ${i['Ui'] ? 2 * i['Ui'] + 1000 : 2500} V AC for 1 minute without flashover or puncture. Confirms arc-damage has not compromised creepage distances.`,
-      '8.3.3.3': (i) =>
-        `Clause 8.3.3.3 (Tripping Characteristics): Must NOT trip at 1.05×In (${i['In'] ? (1.05 * i['In']).toFixed(1) : '?'} A) within defined time. MUST trip within allowed band at 1.30×In (${i['In'] ? (1.30 * i['In']).toFixed(1) : '?'} A). Electronic units have narrower tolerance bands.`,
-      '8.3.4': (i) =>
-        `Clause 8.3.4 (Icu — Ultimate Breaking Capacity): Device must successfully interrupt ${i['Icu'] ?? '?'} kA (rms) prospective short-circuit current in O–CO sequence, then pass subsequent dielectric test.`,
-      '8.3.5': (i) =>
-        `Clause 8.3.5 (Ics — Service Breaking Capacity): Device must interrupt ${i['Ics'] ?? '?'} kA three times (O–CO–CO), then pass temperature-rise and tripping verification — demonstrating repeated service-grade performance.`,
+        `IS/IEC 60947-2:2003 Clause 8.3.3.2 (Dielectric Properties): Solid-state devices disconnected. Isolation leakage current measured through open contacts at 1.1 Ue must not exceed 0.5 mA per pole. Test voltage: ${i['Ui'] ? 2 * i['Ui'] + 1000 : 2500} V AC.`,
+      '8.3.3.3': () =>
+        `IS/IEC 60947-2:2003 Clause 8.3.3.3 (Mechanical & Operational Performance): Undervoltage release drop-out between 35% and 70% Vc; no close at 30% Vc, can close at 85% Vc. Shunt release operates at 70% Vc at +55°C. Table 8 operational cycles.`,
+      '8.3.3.4': () =>
+        `IS/IEC 60947-2:2003 Clause 8.3.3.4 (Overload Performance): For In <= 630A, tested at 6 In AC / 2.5 In DC at 1.05 Ue max, 12 operations (9 manual + 3 automatic).`,
+      '8.3.3.5': () =>
+        `IS/IEC 60947-2:2003 Clause 8.3.3.5 (Dielectric Withstand Post Overload): Verified post overload test with leakage current <= 2 mA at 1.1 Ue for isolation.`,
+      '8.3.3.6': (i) =>
+        `IS/IEC 60947-2:2003 Clause 8.3.3.6 (Verification of Temperature-Rise): Tested at conventional thermal current Ith. Terminal temperature rise <= 70 K; handle temperature rise <= 35 K (insulated) / 25 K (metallic).`,
+      '8.3.3.7': () =>
+        `IS/IEC 60947-2:2003 Clause 8.3.3.7 (Verification of Overload Releases Post Thermal Test): Immediately following 8.3.3.6, operation of overload releases is verified at 1.45 Ir at reference temperature. Trips within conventional tripping time.`,
+      '8.3.3.8': () =>
+        `IS/IEC 60947-2:2003 Clause 8.3.3.8 (Verification of UV and Shunt Releases at Room Temp): UV release no-trip at 70% min Vc, trip at 35% max Vc. Shunt release trip at 70% min Vc.`,
+      '8.3.3.9': () =>
+        `IS/IEC 60947-2:2003 Clause 8.3.3.9 (Verification of Main Contact Position): Verify effectiveness of contact position indication for isolation suitability.`,
     };
     const fn = explanations[clauseId];
-    return fn ? fn(inputs) : `Clause ${clauseId}: No detailed explanation available. Refer to IEC 60947-2 standard text.`;
+    return fn ? fn(inputs) : `IS/IEC 60947-2:2003 Clause ${clauseId}: Refer to standard text for detailed specification.`;
   }
 }

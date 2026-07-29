@@ -48,6 +48,39 @@ export interface RuleCondition {
   formulaRef?: string;             // reference to a formula for computed value
 }
 
+export interface StandardEditionMetadata {
+  edition: string;      // e.g. "IS/IEC 60947-2:2003"
+  publisher: string;    // e.g. "IS/IEC" | "IEC" | "UL"
+  year: number;
+  country?: string;
+  scope: string;
+}
+
+export interface DeclarativeRuleConfig {
+  ruleId: string;
+  clauseId: string;
+  subclause: string;
+  title: string;
+  edition: string;
+  severity: 'critical' | 'major' | 'minor';
+  type: 'Performance Test' | 'Dielectric Test' | 'Thermal Test' | 'Mechanical Test' | 'Tripping Verification' | 'Operational Capability';
+  parameters: Record<string, number | string | boolean>;
+  passMessageTemplate: string;
+  failMessageTemplate: string;
+}
+
+export interface RuleEvidence {
+  parameterName: string;
+  measuredValue: number | string;
+  expectedLimit: number | string;
+  unit?: string;
+  operator: string;
+  verdict: Verdict;
+  clauseId: string;
+  standardEdition: string;
+  explanation: string;
+}
+
 export interface RuleDefinition {
   id: string;
   clauseId: string;
@@ -57,6 +90,7 @@ export interface RuleDefinition {
   failMessage: string;
   passMessage: string;
   severity: 'critical' | 'major' | 'minor';
+  config?: DeclarativeRuleConfig;
 }
 
 // ── Rule Evaluation Result ────────────────────────────────────────────────────
@@ -69,6 +103,10 @@ export interface ClauseResult {
   unit?: string;
   ruleId?: string;
   message: string;
+  explanation?: string;
+  violatedClause?: string | null;
+  standardEdition?: string;
+  evidence?: RuleEvidence;
   timestamp: string;
 }
 

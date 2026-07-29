@@ -111,15 +111,17 @@ export const EQUIPMENT: Equipment[] = [
 const waveformSC = StreamSimulator.generateShortCircuitSnapshot(50);
 
 const clauseResultsSeqII: ClauseResult[] = [
-  { clauseId: '8.3.3.2', clauseTitle: 'Dielectric Withstand (Post Ics)', verdict: 'PASS', measuredValue: 2500, limitValue: 2500, unit: 'V', message: 'No flashover or puncture at 2500V for 60s.', timestamp: '2026-07-20T10:35:00Z' },
-  { clauseId: '8.3.3.3', clauseTitle: 'Tripping Characteristics Verification', verdict: 'PASS', measuredValue: 8.2, limitValue: 15, unit: 's', message: 'Trip at 1.30×In within allowed band.', timestamp: '2026-07-20T11:10:00Z' },
+  { clauseId: '8.3.3.2', clauseTitle: 'Dielectric Properties Verification', verdict: 'PASS', measuredValue: 0.18, limitValue: 0.5, unit: 'mA', message: 'Leakage current 0.18 mA <= 0.5 mA limit at 1.1 Ue.', explanation: 'Dielectric properties verified.', standardEdition: 'IS/IEC 60947-2:2003', timestamp: '2026-07-20T10:35:00Z' },
+  { clauseId: '8.3.3.1.3a', clauseTitle: 'Tripping Limits Verification', verdict: 'PASS', measuredValue: 8.2, limitValue: 15, unit: 's', message: 'Trip at 110% setting = 8.2s within limits.', explanation: 'Tripping characteristics verified.', standardEdition: 'IS/IEC 60947-2:2003', timestamp: '2026-07-20T11:10:00Z' },
   { clauseId: '8.3.5', clauseTitle: 'Service Short-Circuit Breaking (Ics)', verdict: 'PASS', measuredValue: 50, limitValue: 50, unit: 'kA', message: 'O–CO–CO sequence completed. Post-test checks passed.', timestamp: '2026-07-20T09:55:00Z' },
 ];
 
 const clauseResultsSeqI: ClauseResult[] = [
-  { clauseId: '8.3.3.1', clauseTitle: 'Temperature Rise at In', verdict: 'PASS', measuredValue: 58.4, limitValue: 70, unit: 'K', message: 'Terminal ΔT = 58.4 K ≤ 70 K limit.', timestamp: '2026-07-19T15:30:00Z' },
-  { clauseId: '8.3.3.2', clauseTitle: 'Dielectric Withstand (Initial)', verdict: 'PASS', measuredValue: 2500, limitValue: 2500, unit: 'V', message: 'Passed initial 2500V 1-min dielectric.', timestamp: '2026-07-19T16:00:00Z' },
-  { clauseId: '8.3.3.3', clauseTitle: 'Tripping Characteristics', verdict: 'PASS', measuredValue: 9.1, limitValue: 15, unit: 's', message: 'Trip at 1.30×In = 9.1s within limits.', timestamp: '2026-07-19T17:05:00Z' },
+  { clauseId: '8.3.3.1.2', clauseTitle: 'Short-Circuit Tripping Limits (80%/120%)', verdict: 'PASS', measuredValue: 0.08, limitValue: 0.2, unit: 's', message: 'No trip at 80%; operated in 0.08s at 120% Ir_sc.', explanation: 'Short-circuit release operates within limits.', standardEdition: 'IS/IEC 60947-2:2003', timestamp: '2026-07-19T14:30:00Z' },
+  { clauseId: '8.3.3.1.3a', clauseTitle: 'Overload Tripping Limits (90%/110%)', verdict: 'PASS', measuredValue: 0.12, limitValue: 0.2, unit: 's', message: 'No trip at 90%; operated in 0.12s at 110% Ir_ol.', explanation: 'Overload release operates within limits.', standardEdition: 'IS/IEC 60947-2:2003', timestamp: '2026-07-19T15:00:00Z' },
+  { clauseId: '8.3.3.2', clauseTitle: 'Dielectric Properties Test', verdict: 'PASS', measuredValue: 0.22, limitValue: 0.5, unit: 'mA', message: 'No flashover. Leakage current 0.22 mA <= 0.5 mA.', explanation: 'Dielectric properties verified.', standardEdition: 'IS/IEC 60947-2:2003', timestamp: '2026-07-19T16:00:00Z' },
+  { clauseId: '8.3.3.6', clauseTitle: 'Temperature-Rise Test', verdict: 'PASS', measuredValue: 58.4, limitValue: 70, unit: 'K', message: 'Terminal ΔT = 58.4 K <= 70 K limit.', explanation: 'Terminal and handle temperature rise within limits.', standardEdition: 'IS/IEC 60947-2:2003', timestamp: '2026-07-19T17:05:00Z' },
+  { clauseId: '8.3.3.7', clauseTitle: 'Overload Release Verification (1.45 In)', verdict: 'PASS', measuredValue: 420, limitValue: 7200, unit: 's', message: 'Operated in 420s at 1.45 Ir post thermal test.', explanation: 'Overload release verified post thermal test.', standardEdition: 'IS/IEC 60947-2:2003', timestamp: '2026-07-19T18:00:00Z' },
 ];
 
 export const SAMPLES: Sample[] = [
@@ -136,7 +138,7 @@ export const SAMPLES: Sample[] = [
       releaseType: 'Electronic', manufacturer: 'Havells India Ltd.', model: 'HAVELLS-EB250-3P',
       drawingNo: 'HVL-EB250-DRW-002',
     },
-    standardId: 'iec60947-2', standardRevision: '2016',
+    standardId: 'iec60947-2', standardRevision: '2003',
     sequencesToRun: ['seq-I', 'seq-II', 'seq-III'],
     lifecycleState: 'Completed',
     lifecycleHistory: [
@@ -153,7 +155,7 @@ export const SAMPLES: Sample[] = [
         id: 'tr1', sampleId: 's1', sequenceId: 'seq-I',
         startedAt: '2026-07-19T09:00:00Z', completedAt: '2026-07-19T17:30:00Z',
         executedBy: 'Priya Sharma', verdict: 'PASS',
-        inputs: { In: 250, Ue: 415, Ui: 750, dT_terminal: 58.4, dT_handle: 22, dielectric_V: 2500, tripTime_105: 'NT', tripTime_130: 9.1 },
+        inputs: { In: 250, Ue: 415, Ui: 750, dT_terminal_R: 58.4, dT_terminal_S: 56.1, dT_terminal_T: 57.0, dT_handle: 22, leakageCurrentmA: 0.22, tripped_120: true, tripTime_120: 0.08 },
         clauseResults: clauseResultsSeqI, waveformData: undefined, replayLog: [],
       },
       {
@@ -179,7 +181,7 @@ export const SAMPLES: Sample[] = [
       shortCircuitService: 25, category: 'A', releaseType: 'Thermal-Magnetic',
       manufacturer: 'Legrand India', model: 'LGR-DMX-100N-4P', drawingNo: 'LGR-100N-DRW-008',
     },
-    standardId: 'iec60947-2', standardRevision: '2016',
+    standardId: 'iec60947-2', standardRevision: '2003',
     sequencesToRun: ['seq-I', 'seq-II'],
     lifecycleState: 'Testing',
     lifecycleHistory: [
@@ -204,7 +206,7 @@ export const SAMPLES: Sample[] = [
       shortCircuitService: 50, shortTimeDuration: 0.05, category: 'B',
       releaseType: 'Electronic', manufacturer: 'ABB India', model: 'SACE-T6N-630-3P',
     },
-    standardId: 'iec60947-2', standardRevision: '2016',
+    standardId: 'iec60947-2', standardRevision: '2003',
     sequencesToRun: ['seq-I', 'seq-II', 'seq-III', 'seq-IV'],
     lifecycleState: 'Approved',
     lifecycleHistory: [
@@ -234,16 +236,16 @@ export const NOTIFICATIONS: Notification[] = [
 // ── Audit Events ──────────────────────────────────────────────────────────────
 export const AUDIT_EVENTS: AuditEvent[] = [
   { id: 'ae1', timestamp: '2026-07-22T09:15:00Z', userId: 'u2', userName: 'Priya Sharma', action: 'test:execute', resource: 'TestRun', resourceId: 'tr2', details: 'Executed Sequence II (Ics 50 kA) for sample LAB-2026-MCCB-00892. Verdict: PASS.', ipAddress: '192.168.1.102' },
-  { id: 'ae2', timestamp: '2026-07-21T11:00:00Z', userId: 'u1', userName: 'Dr. Arjun Menon', action: 'standard:install', resource: 'Standard', resourceId: 'iec60947-2', details: 'Activated IEC 60947-2 Ed 5.0 (2016) as primary standard.', ipAddress: '192.168.1.100' },
+  { id: 'ae2', timestamp: '2026-07-21T11:00:00Z', userId: 'u1', userName: 'Dr. Arjun Menon', action: 'standard:install', resource: 'Standard', resourceId: 'iec60947-2', details: 'Activated IS/IEC 60947-2:2003 as primary standard.', ipAddress: '192.168.1.100' },
   { id: 'ae3', timestamp: '2026-07-20T16:30:00Z', userId: 'u2', userName: 'Priya Sharma', action: 'sample:edit', resource: 'Sample', resourceId: 's1', details: 'Lifecycle transitioned: Testing → Completed for LAB-2026-MCCB-00892.', ipAddress: '192.168.1.102' },
   { id: 'ae4', timestamp: '2026-07-16T14:00:00Z', userId: 'u1', userName: 'Dr. Arjun Menon', action: 'report:approve', resource: 'Sample', resourceId: 's3', details: 'Report LAB-2026-MCCB-00891 approved. Lifecycle → Approved.', ipAddress: '192.168.1.100' },
   { id: 'ae5', timestamp: '2026-07-18T09:00:00Z', userId: 'u3', userName: 'Rahul Verma', action: 'sample:create', resource: 'Sample', resourceId: 's1', details: 'New sample LAB-2026-MCCB-00892 registered — Havells EB250.', ipAddress: '192.168.1.105' },
 ];
 
-// ── Form Schemas (Sequence I) ─────────────────────────────────────────────────
+// ── Form Schemas (IS/IEC 60947-2:2003 Sequence I) ──────────────────────────────
 export const FORM_SCHEMAS: FormSchema[] = [
   {
-    id: 'fs-seq-i-step1', stepId: 'seq-i-s1', title: 'General Specimen Information',
+    id: 'fs-seq-i-step1', stepId: 'seq-i-s1', title: '1. General Specimen & Installation Setup (Cl. 8.3.3.1.1)',
     fields: [
       { id: 'manufacturer', label: 'Manufacturer', type: 'text', required: true, placeholder: 'e.g. Havells India Ltd.' },
       { id: 'model', label: 'Model / Type Designation', type: 'text', required: true, placeholder: 'e.g. HAVELLS-EB250-3P' },
@@ -256,35 +258,39 @@ export const FORM_SCHEMAS: FormSchema[] = [
     ],
   },
   {
-    id: 'fs-seq-i-step2', stepId: 'seq-i-s2', title: 'Temperature Rise Test Data (Cl. 8.3.3.1)',
+    id: 'fs-seq-i-step2', stepId: 'seq-i-s2', title: '2. Tripping Limits & Characteristics (Cl. 8.3.3.1)',
     fields: [
-      { id: 'In_applied', label: 'Applied Test Current', type: 'number', unit: 'A', required: true, description: '= Rated current In' },
-      { id: 'T_ambient', label: 'Ambient Temperature', type: 'number', unit: '°C', required: true, min: 10, max: 40 },
-      { id: 'dT_terminal_R', label: 'Terminal R Temperature Rise (ΔT)', type: 'number', unit: 'K', required: true },
-      { id: 'dT_terminal_S', label: 'Terminal S Temperature Rise (ΔT)', type: 'number', unit: 'K', required: true },
-      { id: 'dT_terminal_T', label: 'Terminal T Temperature Rise (ΔT)', type: 'number', unit: 'K', required: true },
-      { id: 'dT_handle', label: 'Operating Handle Temperature Rise (ΔT)', type: 'number', unit: 'K', required: true },
-      { id: 'test_duration', label: 'Test Duration', type: 'number', unit: 'min', required: true, min: 60 },
+      { id: 'duration_80', label: 'Short-Circuit 80% Non-Trip Duration', type: 'number', unit: 's', required: true, description: 'Must hold current >= 0.2s without tripping' },
+      { id: 'tripped_80', label: 'Trip at 80% Short-Circuit Setting?', type: 'select', options: ['No', 'Yes'], required: true },
+      { id: 'tripTime_120', label: 'Short-Circuit 120% Trip Time', type: 'number', unit: 's', required: true, description: 'Must trip <= 0.2s (instantaneous) / 2x delay' },
+      { id: 'tripped_120', label: 'Trip at 120% Short-Circuit Setting?', type: 'select', options: ['Yes', 'No'], required: true },
+      { id: 'duration_90', label: 'Overload 90% Non-Trip Duration', type: 'number', unit: 's', required: true, description: 'Must hold current >= 0.2s' },
+      { id: 'tripped_90', label: 'Trip at 90% Overload Setting?', type: 'select', options: ['No', 'Yes'], required: true },
+      { id: 'tripTime_110', label: 'Overload 110% Trip Time', type: 'number', unit: 's', required: true },
+      { id: 'tripped_110', label: 'Trip at 110% Overload Setting?', type: 'select', options: ['Yes', 'No'], required: true },
+      { id: 'tripTime_neutral', label: 'Neutral Pole Overload Trip Time (1.32x Ir)', type: 'number', unit: 's', required: false, description: 'Required for 4-pole breakers (1.2 x 110%)' },
     ],
   },
   {
-    id: 'fs-seq-i-step3', stepId: 'seq-i-s3', title: 'Dielectric Withstand Test (Cl. 8.3.3.2)',
+    id: 'fs-seq-i-step3', stepId: 'seq-i-s3', title: '3. Test of Dielectric Properties (Cl. 8.3.3.2)',
     fields: [
-      { id: 'dielectric_V', label: 'Applied Test Voltage', type: 'number', unit: 'V', required: true, formulaRef: '2 * Ui + 1000', description: 'Typically 2 × Ui + 1000 V (min 2500 V)' },
-      { id: 'dielectric_duration', label: 'Test Duration', type: 'number', unit: 's', required: true, min: 60 },
-      { id: 'flashover', label: 'Flashover or Puncture Observed?', type: 'select', options: ['No', 'Yes'], required: true },
-      { id: 'leakage_current', label: 'Leakage Current', type: 'number', unit: 'mA', required: true, description: 'Must be < 5 mA' },
+      { id: 'dielectric_V', label: 'Applied Test Voltage', type: 'number', unit: 'V', required: true, formulaRef: '2 * Ui + 1000', description: '2 × Ui + 1000 V AC for 60s' },
+      { id: 'flashoverDetected', label: 'Flashover or Breakdown Detected?', type: 'select', options: ['No', 'Yes'], required: true },
+      { id: 'leakageCurrentmA', label: 'Measured Isolation Leakage Current', type: 'number', unit: 'mA', required: true, description: 'Must be <= 0.5 mA at 1.1 Ue for isolation' },
     ],
   },
   {
-    id: 'fs-seq-i-step4', stepId: 'seq-i-s4', title: 'Tripping Characteristic Test (Cl. 8.3.3.3)',
+    id: 'fs-seq-i-step4', stepId: 'seq-i-s4', title: '4. Mechanical & Temperature-Rise Tests (Cl. 8.3.3.3 & 8.3.3.6)',
     fields: [
-      { id: 'I_105', label: 'Applied Current at 1.05×In', type: 'number', unit: 'A', required: true, formulaRef: '1.05 * In' },
-      { id: 'tripOccurred_105', label: 'Trip at 1.05×In?', type: 'select', options: ['No Trip (PASS)', 'Tripped (FAIL)'], required: true },
-      { id: 'I_130', label: 'Applied Current at 1.30×In', type: 'number', unit: 'A', required: true, formulaRef: '1.30 * In' },
-      { id: 'tripTime_130', label: 'Trip Time at 1.30×In', type: 'number', unit: 's', required: true },
-      { id: 'tripLimit_min', label: 'Required Minimum Trip Time', type: 'number', unit: 's', required: false, description: 'Per manufacturer time-current curve' },
-      { id: 'tripLimit_max', label: 'Required Maximum Trip Time', type: 'number', unit: 's', required: true },
+      { id: 'dropOutVoltageRatio', label: 'Undervoltage Drop-Out Voltage Ratio', type: 'number', unit: 'Vc', required: true, description: 'Must be between 0.35 Vc and 0.70 Vc' },
+      { id: 'shuntOperated', label: 'Shunt Release Operation at 70% Vc (+55°C)', type: 'select', options: ['Yes', 'No'], required: true },
+      { id: 'dT_terminal_R', label: 'Terminal R Temperature Rise (ΔT)', type: 'number', unit: 'K', required: true, description: 'Limit <= 70 K' },
+      { id: 'dT_terminal_S', label: 'Terminal S Temperature Rise (ΔT)', type: 'number', unit: 'K', required: true, description: 'Limit <= 70 K' },
+      { id: 'dT_terminal_T', label: 'Terminal T Temperature Rise (ΔT)', type: 'number', unit: 'K', required: true, description: 'Limit <= 70 K' },
+      { id: 'dT_handle', label: 'Operating Handle Temperature Rise (ΔT)', type: 'number', unit: 'K', required: true, description: 'Limit <= 35 K (insulated)' },
+      { id: 'tripped_145', label: '1.45x Ir Overload Verification Trip?', type: 'select', options: ['Yes', 'No'], required: true, description: 'Cl. 8.3.3.7 immediately post thermal test' },
+      { id: 'tripTime_145', label: 'Trip Time at 1.45x Ir', type: 'number', unit: 's', required: true, description: 'Must be <= conventional time' },
     ],
   },
 ];
+

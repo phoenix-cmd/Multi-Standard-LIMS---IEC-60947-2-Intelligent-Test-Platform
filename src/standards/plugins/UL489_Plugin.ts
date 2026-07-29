@@ -31,7 +31,13 @@ nodes:
     clause: 7.1.4
   - id: end
     type: end`,
-  evaluateRule(ruleId: string, measuredValues: Record<string, number>) {
-    return { verdict: 'PASS', message: 'UL 489 rule evaluation passed.' };
+  evaluateRule(ruleId: string, measuredValues: Record<string, number | string | boolean>) {
+    return {
+      clauseId: ruleId,
+      clauseTitle: `UL 489 Clause ${ruleId}`,
+      verdict: 'PASS',
+      message: 'UL 489 rule evaluation passed.',
+      timestamp: new Date().toISOString(),
+    };
   },
 };
