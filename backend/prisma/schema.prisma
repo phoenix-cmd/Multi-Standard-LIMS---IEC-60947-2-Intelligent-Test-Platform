@@ -38,32 +38,59 @@ model Laboratory {
 }
 
 model User {
-  id             String        @id @default(uuid())
-  organizationId String
-  organization   Organization  @relation(fields: [organizationId], references: [id])
-  laboratoryId   String
-  laboratory     Laboratory    @relation(fields: [laboratoryId], references: [id])
-  email          String        @unique
-  passwordHash   String
-  name           String
-  department     String
-  avatarInitials String
-  signature      String?
-  isDeactivated  Boolean       @default(false)
-  failedAttempts Int           @default(0)
-  lockedUntil    DateTime?
-  version        Int           @default(1)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  deletedAt      DateTime?
-  deletedBy      String?
-  userRoles      UserRole[]
-  sessions       UserSession[]
-  assignedSamples Sample[]
-  executedTestRuns TestRun[]
-  digitalSignatures DigitalSignature[]
-  auditLogs      AuditLog[]
-  notifications  Notification[]
+  id                  String            @id @default(uuid())
+  organizationId      String
+  organization        Organization      @relation(fields: [organizationId], references: [id])
+  laboratoryId        String
+  laboratory          Laboratory        @relation(fields: [laboratoryId], references: [id])
+  email               String            @unique
+  passwordHash        String
+  name                String
+  employeeId          String?           @unique
+  position            String?
+  department          String
+  phone               String?
+  notes               String?
+  avatarInitials      String
+  signature           String?
+  isDeactivated       Boolean           @default(false)
+  failedAttempts      Int               @default(0)
+  lockedUntil         DateTime?
+  temporaryPassword   String?
+  forcePasswordChange Boolean           @default(false)
+  passwordChangedAt   DateTime          @default(now())
+  version             Int               @default(1)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  deletedAt           DateTime?
+  deletedBy           String?
+  userRoles           UserRole[]
+  sessions            UserSession[]
+  passwordHistory     PasswordHistory[]
+  assignedSamples     Sample[]
+  executedTestRuns    TestRun[]
+  digitalSignatures   DigitalSignature[]
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+}
+
+model PasswordHistory {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  category  String   @default("general")
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
 }
 
 model Role {

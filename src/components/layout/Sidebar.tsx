@@ -41,6 +41,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     section: 'GOVERNANCE & REPORTS',
     items: [
+      { label: 'Administration', to: '/admin', icon: Shield },
       { label: 'Reports', to: '/reports', icon: FileText },
       { label: 'Standards', to: '/standards', icon: BookOpen },
       { label: 'Audit Trail', to: '/audit', icon: ClipboardList },

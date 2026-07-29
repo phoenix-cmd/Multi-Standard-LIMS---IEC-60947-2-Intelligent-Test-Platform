@@ -29,6 +29,7 @@ import { WorkflowEditor } from './components/workflow/WorkflowEditor';
 import { InvestigationWorkspace } from './components/investigation/InvestigationWorkspace';
 import { NotebookWorkspace } from './components/notebook/NotebookWorkspace';
 import { SandboxWorkspace } from './components/sandbox/SandboxWorkspace';
+import { AdminWorkspace } from './components/admin/AdminWorkspace';
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Operations Dashboard',
@@ -41,7 +42,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/reports': 'Test Reports',
   '/standards': 'Standard Manager',
   '/audit': 'Audit Trail',
-  '/settings': 'Settings & Permissions',
+  '/admin': 'Enterprise Administration & Identity OS',
+  '/settings': 'Enterprise Administration & Identity OS',
   '/engineering': 'Engineering Intelligence Platform',
   '/analytics': 'Laboratory Analytics & Business Intelligence',
   '/workflow': 'Visual Workflow Designer',
@@ -117,7 +119,8 @@ function DesktopShell() {
             <Route path="/reports" element={<Page path="/reports"><ReportList /></Page>} />
             <Route path="/standards" element={<Page path="/standards"><StandardManagerView /></Page>} />
             <Route path="/audit" element={<Page path="/audit"><AuditTrailView /></Page>} />
-            <Route path="/settings" element={<Page path="/settings"><Placeholder label="Settings & RBAC Permissions" /></Page>} />
+            <Route path="/admin" element={<Page path="/admin"><AdminWorkspace /></Page>} />
+            <Route path="/settings" element={<Page path="/settings"><AdminWorkspace /></Page>} />
             <Route path="/engineering" element={<EngineeringPlatform />} />
             <Route path="/analytics" element={<Page path="/analytics"><AnalyticsDashboard /></Page>} />
             <Route path="/workflow" element={<WorkflowEditor />} />
