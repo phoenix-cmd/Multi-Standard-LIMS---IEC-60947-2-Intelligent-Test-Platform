@@ -237,8 +237,8 @@ export function MainContacts3D({ comp, color, emissive }: ModelProps) {
           </mesh>
 
           {/* Fixed Contact Silver Tip Button (AgW / AgNi Alloy) */}
-          <mesh position={[0, 0.1, -d / 4 + 0.2]}>
-            <cylinderGeometry args={[0.22, 0.22, 0.1, 16]} rotation={[Math.PI / 2, 0, 0]} />
+          <mesh position={[0, 0.1, -d / 4 + 0.2]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.22, 0.22, 0.1, 16]} />
             <meshStandardMaterial color="#f1f5f9" metalness={0.98} roughness={0.05} />
           </mesh>
 
@@ -249,8 +249,8 @@ export function MainContacts3D({ comp, color, emissive }: ModelProps) {
           </mesh>
 
           {/* Moving Contact Silver Tip Button */}
-          <mesh position={[0, 0.5, 0]}>
-            <cylinderGeometry args={[0.22, 0.22, 0.1, 16]} rotation={[Math.PI / 2, 0, 0]} />
+          <mesh position={[0, 0.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.22, 0.22, 0.1, 16]} />
             <meshStandardMaterial color="#f1f5f9" metalness={0.98} roughness={0.05} />
           </mesh>
 
@@ -444,8 +444,8 @@ export function TripUnit3D({ comp, color, emissive }: ModelProps) {
         { y: h / 2 - 0.7, col: '#f59e0b' },
         { y: h / 2 - 1.0, col: '#ef4444' },
       ].map((led, idx) => (
-        <mesh key={idx} position={[-w / 3, led.y, d / 2 + 0.1]}>
-          <cylinderGeometry args={[0.08, 0.08, 0.05, 12]} rotation={[Math.PI / 2, 0, 0]} />
+        <mesh key={idx} position={[-w / 3, led.y, d / 2 + 0.1]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.08, 0.08, 0.05, 12]} />
           <meshBasicMaterial color={led.col} />
         </mesh>
       ))}
@@ -466,14 +466,14 @@ export function TestButton3D({ comp, color, emissive }: ModelProps) {
   return (
     <group>
       {/* Button Collar Mount */}
-      <mesh castShadow receiveShadow position={[0, 0, 0]}>
-        <cylinderGeometry args={[w / 2, w / 2, d * 0.5, 16]} rotation={[Math.PI / 2, 0, 0]} />
+      <mesh castShadow receiveShadow position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[w / 2, w / 2, d * 0.5, 16]} />
         <meshStandardMaterial color="#1e293b" roughness={0.4} />
       </mesh>
 
       {/* Red Push Button Cap */}
-      <mesh position={[0, 0, d * 0.35]}>
-        <cylinderGeometry args={[w * 0.42, w * 0.42, d * 0.4, 16]} rotation={[Math.PI / 2, 0, 0]} />
+      <mesh position={[0, 0, d * 0.35]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[w * 0.42, w * 0.42, d * 0.4, 16]} />
         <meshStandardMaterial
           color="#ef4444"
           roughness={0.2}
