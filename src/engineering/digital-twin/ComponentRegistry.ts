@@ -111,6 +111,25 @@ export const MCCB_COMPONENTS: Record<string, Omit<ComponentState, 'status' | 'te
     linkedClauseIds: ['8.3.3.2', '8.3.3.5'],
     colorByStatus: { ...DEFAULT_COLORS, normal: '#475569' },
   },
+  undervoltageRelease: {
+    id: 'undervoltageRelease', name: 'Under-Voltage Release (UVR)', shortName: 'UVR',
+    position: [-3.8, 1.2, 1.5], dimensions: [1.0, 2.8, 1.2], explosionVector: [-3, 0, 2],
+    linkedClauseIds: ['8.3.3.3', '8.3.3.8'],
+    colorByStatus: { ...DEFAULT_COLORS, normal: '#312e81', testing: '#4338ca' },
+  },
+  shuntRelease: {
+    id: 'shuntRelease', name: 'Shunt Release (SHT)', shortName: 'Shunt',
+    position: [-3.8, -1.2, 1.5], dimensions: [1.0, 2.0, 1.2], explosionVector: [-3, -0.5, 2],
+    linkedClauseIds: ['8.3.3.3', '8.3.3.8'],
+    colorByStatus: { ...DEFAULT_COLORS, normal: '#1e3a5f', testing: '#1d4ed8' },
+  },
+  positionIndicator: {
+    id: 'positionIndicator', name: 'Contact Position Indicator', shortName: 'Pos. Ind.',
+    position: [0, 5.8, 2.5], dimensions: [1.8, 0.6, 0.4], explosionVector: [0, 2.5, 2.5],
+    linkedClauseIds: ['8.3.3.9'],
+    colorByStatus: { ...DEFAULT_COLORS, normal: '#065f46', testing: '#059669' },
+  },
 };
+
 
 export const COMPONENT_IDS = Object.keys(MCCB_COMPONENTS);

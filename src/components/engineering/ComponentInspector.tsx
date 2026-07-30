@@ -4,7 +4,7 @@ import { COMPONENT_KNOWLEDGE } from '../../engineering/knowledge/ComponentDataba
 import { X, AlertTriangle, CheckCircle2, Wrench, BookOpen, RotateCcw } from 'lucide-react';
 
 export function ComponentInspector() {
-  const { selectedComponentId, setSelectedComponentId, twinState, sendMessage, setHighlightedClauseId } = useEngineering();
+  const { selectedComponentId, setSelectedComponentId, twinState, sendMessage, setHighlightedClauseId, selectedComponentRealStatus } = useEngineering();
 
   if (!selectedComponentId) return null;
 
@@ -43,7 +43,17 @@ export function ComponentInspector() {
               { label: 'Health', value: `${comp.health}%`, color: comp.health >= 80 ? 'text-emerald-400' : comp.health >= 50 ? 'text-amber-400' : 'text-red-400' },
               { label: 'Wear', value: `${comp.wear}%`, color: 'text-surface-300' },
               { label: 'Temp', value: `${comp.temperature}°C`, color: comp.temperature > 70 ? 'text-red-400' : 'text-surface-300' },
-              { label: 'Status', value: comp.status.charAt(0).toUpperCase() + comp.status.slice(1), color: comp.status === 'failure' ? 'text-red-400' : comp.status === 'testing' ? 'text-blue-400' : 'text-emerald-400' },
+              {
+                label: 'Status',
+                value: (() => {
+                  const realStatus = selectedComponentRealStatus ?? comp.status;
+                  return realStatus.charAt(0).toUpperCase() + realStatus.slice(1);
+                })(),
+                color: (() => {
+                  const realStatus = selectedComponentRealStatus ?? comp.status;
+                  return realStatus === 'failure' ? 'text-red-400' : realStatus === 'testing' ? 'text-blue-400' : realStatus === 'warning' ? 'text-amber-400' : realStatus === 'maintenance' ? 'text-purple-400' : 'text-emerald-400';
+                })(),
+              },
             ].map((item) => (
               <div key={item.label} className="bg-surface-800 rounded-lg px-3 py-2">
                 <p className="text-[10px] text-surface-500 uppercase tracking-wide">{item.label}</p>

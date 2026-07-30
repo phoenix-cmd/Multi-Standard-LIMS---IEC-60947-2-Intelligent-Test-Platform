@@ -25,9 +25,11 @@ function ComponentMesh({ comp, explosionFactor, onClick, isSelected, casingOpaci
   const [hovered, setHovered] = useState(false);
   const pos = getExplodedPosition(comp.id, explosionFactor);
 
-  const status = hovered ? 'hovered' : comp.status;
-  const hexColor = STATUS_COLORS[status] || STATUS_COLORS.normal;
-  const emissiveHex = isSelected ? '#004455' : (EMISSIVE_COLORS[status] || '#000000');
+  // Use per-component colorByStatus for accurate part identification in the viewer.
+  // Fall back to the global palette for statuses not overridden in the registry.
+  const effectiveStatus = hovered ? 'hovered' : comp.status;
+  const hexColor = (comp.colorByStatus?.[effectiveStatus]) ?? (STATUS_COLORS[effectiveStatus] || STATUS_COLORS.normal);
+  const emissiveHex = isSelected ? '#004455' : (EMISSIVE_COLORS[effectiveStatus] || '#000000');
 
   const color = useMemo(() => new THREE.Color(hexColor), [hexColor]);
   const emissive = useMemo(() => new THREE.Color(emissiveHex), [emissiveHex]);

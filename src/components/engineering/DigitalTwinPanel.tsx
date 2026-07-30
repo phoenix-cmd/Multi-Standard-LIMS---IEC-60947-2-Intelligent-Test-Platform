@@ -2,7 +2,8 @@ import React from 'react';
 import { useEngineering } from '../../context/EngineeringContext';
 import { COMPONENT_KNOWLEDGE } from '../../engineering/knowledge/ComponentDatabase';
 import type { ComponentState, ComponentStatus } from '../../engineering/digital-twin/TwinState';
-import { CLAUSE_HIGHLIGHT_MAP } from '../../engineering/viewer3d/HighlightEngine';
+import { CLAUSE_IDS } from '../../engineering/digital-twin/ClauseComponentMap';
+import { getClauseDescription } from '../../engineering/viewer3d/HighlightEngine';
 import { AlertTriangle, CheckCircle2, Wrench, Activity, Zap, ThermometerIcon } from 'lucide-react';
 
 const STATUS_CONFIG: Record<ComponentStatus, { label: string; color: string; bg: string; Icon: React.FC<{ className?: string }> }> = {
@@ -100,14 +101,14 @@ function ComponentCard({ comp }: { comp: ComponentState }) {
 
 function ClauseFilter() {
   const { highlightedClauseId, setHighlightedClauseId } = useEngineering();
-  const clauses = Object.keys(CLAUSE_HIGHLIGHT_MAP);
 
   return (
     <div className="flex gap-1.5 flex-wrap">
-      {clauses.map((c) => (
+      {CLAUSE_IDS.map((c) => (
         <button
           key={c}
           onClick={() => setHighlightedClauseId(highlightedClauseId === c ? null : c)}
+          title={getClauseDescription(c)}
           className={`text-xs px-2.5 py-1 rounded-lg border transition-all font-mono font-semibold
             ${highlightedClauseId === c
               ? 'bg-brand-600 border-brand-500 text-white'

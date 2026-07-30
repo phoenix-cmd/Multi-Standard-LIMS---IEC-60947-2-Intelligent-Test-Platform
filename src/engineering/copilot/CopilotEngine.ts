@@ -235,11 +235,14 @@ export class CopilotEngine {
 
   private _getClauseExplanation(clauseId: string, ctx: CopilotContext): string {
     const map: Record<string, string> = {
-      '8.3.3.1': `Temperature rise test — verifies that no terminal exceeds ΔT=70K and the operating handle does not exceed ΔT=35K above ambient when carrying rated current In=${ctx.ratedCurrent}A continuously until thermal equilibrium.`,
-      '8.3.3.2': `Dielectric withstand — applies ${2 * ctx.ratedVoltage + 1000}V AC for 60 seconds across each insulated path. No flashover, puncture, or leakage >5mA shall occur.`,
-      '8.3.3.3': `Overcurrent release characteristics — breaker must NOT trip at 1.05×In=${1.05 * ctx.ratedCurrent}A for 2 hours from cold. Must TRIP at 1.30×In=${1.3 * ctx.ratedCurrent}A within the conventional tripping time.`,
-      '8.3.4': `Ultimate breaking capacity (Icu) — O–t–CO sequence at ${ctx.ratedCurrent >= 630 ? 85 : 50}kA prospective short-circuit current. Post-test: must withstand dielectric and trip correctly.`,
-      '8.3.5': `Service breaking capacity (Ics) — O–t–CO–t–CO sequence. Breaker must remain fully serviceable after all three operations.`,
+      '8.3.3.1':    `Tripping characteristics — breaker must NOT trip at 1.05×In=${(1.05 * ctx.ratedCurrent).toFixed(1)}A for 2 hours from cold. Must TRIP at 1.30×In=${(1.30 * ctx.ratedCurrent).toFixed(1)}A within the conventional tripping time.`,
+      '8.3.3.1.2':  `Magnetic instantaneous release — trip current above I_m threshold (typically 5–20×In). Must operate in ≤10ms. Non-trip below 80% of I_m; trip above 120% of I_m.`,
+      '8.3.3.1.3a': `Bimetal thermal release — verified at 1.45×Ir at reference temperature immediately after thermal equilibrium at In.`,
+      '8.3.3.2':    `Dielectric withstand — applies ${2 * ctx.ratedVoltage + 1000}V AC for 60 seconds across each insulated path. No flashover, puncture, or leakage >5mA shall occur.`,
+      '8.3.3.3':    `Mechanical & operational performance — UV release must drop-out at ≤35% Vc and pick up at ≥85% Vc. Shunt release must trip at 70% Vc at 55°C. Operating cycles per Table 8.`,
+      '8.3.3.6':    `Temperature-rise test — verifies that no terminal exceeds ΔT=70K and the operating handle does not exceed ΔT=35K above ambient when carrying rated current In=${ctx.ratedCurrent}A continuously until thermal equilibrium.`,
+      '8.3.4':      `Ultimate breaking capacity (Icu) — O–t–CO sequence at ${ctx.ratedCurrent >= 630 ? 85 : 50}kA prospective short-circuit current. Post-test: must withstand dielectric and trip correctly.`,
+      '8.3.5':      `Service breaking capacity (Ics) — O–t–CO–t–CO sequence. Breaker must remain fully serviceable after all three operations.`,
     };
     return map[clauseId] || `IEC 60947-2 clause requiring specific electrical or mechanical performance.`;
   }

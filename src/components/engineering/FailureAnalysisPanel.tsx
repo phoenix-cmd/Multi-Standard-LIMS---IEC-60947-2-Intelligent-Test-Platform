@@ -3,6 +3,17 @@ import { useEngineering } from '../../context/EngineeringContext';
 import { useLIMS } from '../../context/LIMSContext';
 import { AlertTriangle, TrendingDown, CheckCircle2, Zap } from 'lucide-react';
 import { CLAUSE_HIGHLIGHT_MAP } from '../../engineering/viewer3d/HighlightEngine';
+import { COMPONENT_KNOWLEDGE } from '../../engineering/knowledge/ComponentDatabase';
+
+/** Convert camelCase or unknown IDs to a readable label. */
+function humanizeComponentId(id: string, shortName?: string): string {
+  if (shortName) return shortName;
+  const knowledge = COMPONENT_KNOWLEDGE[id];
+  if (knowledge) return knowledge.name;
+  // Fallback: split camelCase → "Undervoltage Release"
+  return id.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
+}
+
 
 export function FailureAnalysisPanel() {
   const { activeSampleId, twinState, setHighlightedClauseId, sendMessage, highlightedClauseId } = useEngineering();
@@ -76,7 +87,7 @@ export function FailureAnalysisPanel() {
                     <span className="text-[9px] text-surface-500">Affects:</span>
                     {affectedComponents.slice(0, 3).map((cid) => (
                       <span key={cid} className="text-[9px] px-1.5 py-0.5 rounded bg-surface-700 text-surface-400">
-                        {twinState[cid]?.shortName ?? cid}
+                        {humanizeComponentId(cid, twinState[cid]?.shortName)}
                       </span>
                     ))}
                   </div>

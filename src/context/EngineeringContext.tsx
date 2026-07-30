@@ -17,6 +17,7 @@ interface EngineeringContextValue {
   setExplosionFactor: (v: number) => void;
   selectedComponentId: string | null;
   setSelectedComponentId: (id: string | null) => void;
+  selectedComponentRealStatus: string | null; // the status before 'selected' override
   highlightedClauseId: string | null;
   setHighlightedClauseId: (id: string | null) => void;
   viewMode: 'perspective' | 'orthographic';
@@ -83,19 +84,31 @@ export function EngineeringProvider({ children }: { children: React.ReactNode })
     globalTwinEngine.setHighlightedClause(highlightedClauseId);
   }, [highlightedClauseId]);
 
-  // Mark selected component as selected
+  // Track previous status of selected component to restore it on deselection
+  const prevSelectedStatus = useRef<{ id: string; status: string } | null>(null);
+
+  // Mark selected component as 'selected' — preserve its real status on deselection
   useEffect(() => {
-    const currentState = globalTwinEngine.getState();
-    // Reset previous selection
-    Object.keys(currentState).forEach((id) => {
-      if (currentState[id].status === 'selected') {
-        globalTwinEngine.setComponentStatus(id, 'normal');
+    // Restore previous component's real status if it was overridden to 'selected'
+    if (prevSelectedStatus.current) {
+      const { id, status } = prevSelectedStatus.current;
+      const current = globalTwinEngine.getComponent(id);
+      if (current && current.status === 'selected') {
+        // Only restore if it's still in 'selected' state (not changed by a test event)
+        globalTwinEngine.setComponentStatus(id, status as any);
       }
-    });
+      prevSelectedStatus.current = null;
+    }
     if (selectedComponentId) {
-      globalTwinEngine.setComponentStatus(selectedComponentId, 'selected');
+      const current = globalTwinEngine.getComponent(selectedComponentId);
+      if (current && current.status !== 'selected') {
+        // Save the real status before overriding with 'selected'
+        prevSelectedStatus.current = { id: selectedComponentId, status: current.status };
+        globalTwinEngine.setComponentStatus(selectedComponentId, 'selected');
+      }
     }
   }, [selectedComponentId]);
+
 
   // Initialize twin with first sample on mount
   useEffect(() => {
@@ -165,6 +178,7 @@ export function EngineeringProvider({ children }: { children: React.ReactNode })
     overallHealth: globalTwinEngine.getOverallHealth(),
     explosionFactor, setExplosionFactor,
     selectedComponentId, setSelectedComponentId,
+    selectedComponentRealStatus: prevSelectedStatus.current?.status ?? null,
     highlightedClauseId, setHighlightedClauseId,
     viewMode, setViewMode,
     activeSampleId, setActiveSampleId,
@@ -172,6 +186,7 @@ export function EngineeringProvider({ children }: { children: React.ReactNode })
     sendMessage, clearConversation,
     starterQuestions: globalConversation.getStarterQuestions(),
   };
+
 
   return <EngineeringContext.Provider value={value}>{children}</EngineeringContext.Provider>;
 }
