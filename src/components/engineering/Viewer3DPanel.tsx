@@ -4,12 +4,11 @@ import { OrbitControls, PerspectiveCamera, OrthographicCamera, Environment, Grid
 import * as THREE from 'three';
 import { useEngineering } from '../../context/EngineeringContext';
 import { getExplodedPosition } from '../../engineering/viewer3d/ExplodedView';
-import { COMPONENT_KNOWLEDGE } from '../../engineering/knowledge/ComponentDatabase';
 import type { ComponentState } from '../../engineering/digital-twin/TwinState';
 import { STATUS_COLORS, EMISSIVE_COLORS } from '../../engineering/viewer3d/HighlightEngine';
+import { CustomMCCBModel } from './models/MCCBComponents3D';
 import {
-  Maximize2, Minimize2, RotateCcw, Layers, Camera, Box,
-  ZoomIn, ZoomOut, Eye
+  Camera, Layers, Eye, EyeOff
 } from 'lucide-react';
 
 // ── Component Mesh ────────────────────────────────────────────────────────────
@@ -18,10 +17,11 @@ interface ComponentMeshProps {
   explosionFactor: number;
   onClick: (id: string) => void;
   isSelected: boolean;
+  casingOpacity: number;
 }
 
-function ComponentMesh({ comp, explosionFactor, onClick, isSelected }: ComponentMeshProps) {
-  const meshRef = useRef<THREE.Mesh>(null!);
+function ComponentMesh({ comp, explosionFactor, onClick, isSelected, casingOpacity }: ComponentMeshProps) {
+  const groupRef = useRef<THREE.Group>(null!);
   const [hovered, setHovered] = useState(false);
   const pos = getExplodedPosition(comp.id, explosionFactor);
 
@@ -32,64 +32,45 @@ function ComponentMesh({ comp, explosionFactor, onClick, isSelected }: Component
   const color = useMemo(() => new THREE.Color(hexColor), [hexColor]);
   const emissive = useMemo(() => new THREE.Color(emissiveHex), [emissiveHex]);
 
-  // Pulse animation for testing / failure states
-  useFrame((state) => {
-    if (!meshRef.current) return;
-    const t = state.clock.elapsedTime;
-    if (comp.status === 'testing') {
-      const mat = meshRef.current.material as THREE.MeshStandardMaterial;
-      mat.emissiveIntensity = 0.3 + 0.3 * Math.sin(t * 3);
-    } else if (comp.status === 'failure') {
-      const mat = meshRef.current.material as THREE.MeshStandardMaterial;
-      mat.emissiveIntensity = 0.3 + 0.7 * Math.abs(Math.sin(t * 4));
-    } else {
-      const mat = meshRef.current.material as THREE.MeshStandardMaterial;
-      mat.emissiveIntensity = isSelected ? 0.4 : 0.05;
-    }
-  });
-
   const [w, h, d] = comp.dimensions;
 
   return (
-    <group position={pos}>
-      <mesh
-        ref={meshRef}
-        castShadow
-        receiveShadow
-        onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onClick(comp.id); }}
-        onPointerEnter={() => setHovered(true)}
-        onPointerLeave={() => setHovered(false)}
-      >
-        <boxGeometry args={[w, h, d]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={emissive}
-          emissiveIntensity={0.1}
-          roughness={0.4}
-          metalness={comp.id.includes('terminal') ? 0.8 : comp.id === 'mainContacts' ? 0.9 : 0.2}
-        />
-      </mesh>
+    <group
+      ref={groupRef}
+      position={pos}
+      onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onClick(comp.id); }}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
+    >
+      <CustomMCCBModel
+        comp={comp}
+        color={color}
+        emissive={emissive}
+        isSelected={isSelected}
+        casingOpacity={comp.id === 'casing' ? casingOpacity : 1.0}
+      />
 
-      {/* Selection ring */}
+      {/* Selection wireframe bounding ring */}
       {isSelected && (
         <mesh>
-          <boxGeometry args={[w + 0.15, h + 0.15, d + 0.15]} />
+          <boxGeometry args={[w + 0.2, h + 0.2, d + 0.2]} />
           <meshBasicMaterial color="#06b6d4" wireframe transparent opacity={0.6} />
         </mesh>
       )}
 
-      {/* Label on hover or selection */}
+      {/* Interactive label on hover or selection */}
       {(hovered || isSelected) && (
         <Html
-          position={[0, h / 2 + 0.5, 0]}
+          position={[0, h / 2 + 0.6, 0]}
           center
           distanceFactor={20}
           style={{ pointerEvents: 'none' }}
         >
-          <div className="bg-surface-900/95 border border-surface-600 rounded-lg px-2 py-1 text-[10px] font-bold text-white whitespace-nowrap shadow-xl">
-            {comp.shortName}
-            {comp.status === 'failure' && <span className="ml-1.5 text-red-400">● FAIL</span>}
-            {comp.status === 'testing' && <span className="ml-1.5 text-blue-400">● TEST</span>}
+          <div className="bg-surface-900/95 border border-surface-600 rounded-lg px-2.5 py-1 text-[10px] font-bold text-white whitespace-nowrap shadow-xl flex items-center gap-1.5 backdrop-blur">
+            <span>{comp.shortName}</span>
+            {comp.status === 'failure' && <span className="text-red-400">● FAIL</span>}
+            {comp.status === 'testing' && <span className="text-blue-400">● TEST</span>}
+            {comp.status === 'warning' && <span className="text-amber-400">● WARN</span>}
           </div>
         </Html>
       )}
@@ -98,23 +79,31 @@ function ComponentMesh({ comp, explosionFactor, onClick, isSelected }: Component
 }
 
 // ── MCCB Scene ────────────────────────────────────────────────────────────────
-function MCCBScene({ explosionFactor, onComponentClick }: { explosionFactor: number; onComponentClick: (id: string) => void }) {
+function MCCBScene({
+  explosionFactor,
+  casingOpacity,
+  onComponentClick,
+}: {
+  explosionFactor: number;
+  casingOpacity: number;
+  onComponentClick: (id: string) => void;
+}) {
   const { twinState, selectedComponentId } = useEngineering();
   const components = Object.values(twinState);
 
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 20, 10]} intensity={1.2} castShadow shadow-mapSize={[2048, 2048]} />
-      <directionalLight position={[-10, 5, -10]} intensity={0.4} color="#4488ff" />
-      <pointLight position={[0, 15, 5]} intensity={0.5} color="#aaccff" />
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[12, 22, 12]} intensity={1.4} castShadow shadow-mapSize={[2048, 2048]} />
+      <directionalLight position={[-12, 8, -12]} intensity={0.5} color="#38bdf8" />
+      <pointLight position={[0, 15, 8]} intensity={0.6} color="#e0f2fe" />
 
       <Environment preset="city" />
 
-      {/* Shadow floor */}
+      {/* Shadow Floor */}
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -10, 0]}>
         <planeGeometry args={[100, 100]} />
-        <shadowMaterial opacity={0.15} />
+        <shadowMaterial opacity={0.2} />
       </mesh>
 
       <Grid
@@ -138,6 +127,7 @@ function MCCBScene({ explosionFactor, onComponentClick }: { explosionFactor: num
           key={comp.id}
           comp={comp}
           explosionFactor={explosionFactor}
+          casingOpacity={casingOpacity}
           onClick={onComponentClick}
           isSelected={selectedComponentId === comp.id}
         />
@@ -148,12 +138,14 @@ function MCCBScene({ explosionFactor, onComponentClick }: { explosionFactor: num
 
 // ── Viewer Toolbar ────────────────────────────────────────────────────────────
 function ViewerToolbar({
-  explosionFactor, setExplosionFactor, viewMode, setViewMode,
+  explosionFactor, setExplosionFactor, viewMode, setViewMode, casingOpacity, setCasingOpacity,
 }: {
   explosionFactor: number;
   setExplosionFactor: (v: number) => void;
   viewMode: 'perspective' | 'orthographic';
   setViewMode: (m: 'perspective' | 'orthographic') => void;
+  casingOpacity: number;
+  setCasingOpacity: (v: number) => void;
 }) {
   return (
     <div className="absolute top-3 left-3 right-3 flex items-center gap-2 pointer-events-none z-10">
@@ -166,7 +158,9 @@ function ViewerToolbar({
         >
           <Camera className="w-3.5 h-3.5" />
         </button>
+
         <div className="w-px h-4 bg-surface-700" />
+
         <button
           onClick={() => setExplosionFactor(explosionFactor > 0 ? 0 : 1)}
           title="Toggle Exploded View"
@@ -175,6 +169,19 @@ function ViewerToolbar({
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
+        </button>
+
+        <div className="w-px h-4 bg-surface-700" />
+
+        {/* X-Ray / Casing Opacity Toggle */}
+        <button
+          onClick={() => setCasingOpacity(casingOpacity < 0.8 ? 0.95 : 0.25)}
+          title={casingOpacity < 0.8 ? 'Disable X-Ray Casing' : 'Enable X-Ray Transparent Casing'}
+          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+            casingOpacity < 0.8 ? 'text-emerald-400 bg-emerald-500/20' : 'text-surface-400 hover:text-emerald-400 hover:bg-emerald-500/10'
+          }`}
+        >
+          {casingOpacity < 0.8 ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
         </button>
       </div>
 
@@ -194,8 +201,9 @@ function ViewerToolbar({
 
       <div className="flex-1" />
 
-      {/* Right: Camera mode badge */}
-      <div className="bg-surface-900/90 backdrop-blur rounded-lg border border-surface-700 px-2.5 py-1 pointer-events-auto">
+      {/* Right: Camera & X-Ray Mode Badge */}
+      <div className="flex items-center gap-2 bg-surface-900/90 backdrop-blur rounded-lg border border-surface-700 px-2.5 py-1 pointer-events-auto">
+        {casingOpacity < 0.8 && <span className="text-[9px] font-bold text-emerald-400 tracking-wider uppercase">X-RAY</span>}
         <p className="text-[10px] text-surface-400 font-semibold">{viewMode === 'perspective' ? 'PERSP' : 'ORTHO'}</p>
       </div>
     </div>
@@ -229,6 +237,7 @@ function StatusLegend() {
 // ── Main Viewer Panel ─────────────────────────────────────────────────────────
 export function Viewer3DPanel() {
   const { explosionFactor, setExplosionFactor, viewMode, setViewMode, selectedComponentId, setSelectedComponentId } = useEngineering();
+  const [casingOpacity, setCasingOpacity] = useState(0.85);
 
   const handleComponentClick = (id: string) => {
     setSelectedComponentId(selectedComponentId === id ? null : id);
@@ -246,6 +255,8 @@ export function Viewer3DPanel() {
         setExplosionFactor={setExplosionFactor}
         viewMode={viewMode}
         setViewMode={setViewMode}
+        casingOpacity={casingOpacity}
+        setCasingOpacity={setCasingOpacity}
       />
 
       <StatusLegend />
@@ -265,7 +276,11 @@ export function Viewer3DPanel() {
         <color attach="background" args={['#020817']} />
         <fog attach="fog" args={['#020817', 40, 100]} />
 
-        <MCCBScene explosionFactor={explosionFactor} onComponentClick={handleComponentClick} />
+        <MCCBScene
+          explosionFactor={explosionFactor}
+          casingOpacity={casingOpacity}
+          onComponentClick={handleComponentClick}
+        />
 
         <OrbitControls
           makeDefault
@@ -290,3 +305,4 @@ export function Viewer3DPanel() {
     </div>
   );
 }
+

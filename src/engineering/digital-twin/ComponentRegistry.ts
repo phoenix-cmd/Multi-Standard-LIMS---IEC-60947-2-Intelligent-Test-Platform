@@ -105,6 +105,12 @@ export const MCCB_COMPONENTS: Record<string, Omit<ComponentState, 'status' | 'te
     linkedClauseIds: [],
     colorByStatus: { ...DEFAULT_COLORS, normal: '#ef4444' },
   },
+  phaseBarriers: {
+    id: 'phaseBarriers', name: 'Phase Isolation Barriers', shortName: 'Barriers',
+    position: [0, 0, 0], dimensions: [7.5, 10, 3.8], explosionVector: [0, 0, 1.8],
+    linkedClauseIds: ['8.3.3.2', '8.3.3.5'],
+    colorByStatus: { ...DEFAULT_COLORS, normal: '#475569' },
+  },
 };
 
 export const COMPONENT_IDS = Object.keys(MCCB_COMPONENTS);
